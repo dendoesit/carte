@@ -4,7 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 
 const Signup: React.FC = () => {
   const navigate = useNavigate();
-  const { signup } = useAuth();
+  const { register } = useAuth();
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -23,7 +23,7 @@ const Signup: React.FC = () => {
     }
 
     try {
-      await signup(formData.username, formData.email, formData.password);
+      await register(formData.username, formData.email, formData.password);
       navigate('/dashboard');
     } catch (err) {
       setError('Failed to create account');

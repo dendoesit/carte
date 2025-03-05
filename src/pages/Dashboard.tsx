@@ -123,84 +123,59 @@ const Dashboard: React.FC = () => {
   }
 
   const handleSubmit = () => {
-    if (!projectName) return
-
-    if (editingProject) {
-      updateProject(editingProject.id, {
-        name: projectName,
-        description: projectDescription,
-        constructionName: constructionName,
-        address: address,
-        beneficiary: beneficiary,
-        designer: designer,
-        builder: builder,
-        startDate: startDate,
-        endDate: endDate,
-        tabs: {
-          general: {
-            projectType: '',
-            clientName: '',
-            startDate: new Date(),
-            endDate: new Date()
-          },
-          technical: {
-            technologies: [],
-            complexity: 'Low',
-            technicalRequirements: ''
-          },
-          financial: {
-            budget: 0,
-            estimatedCost: 0,
-            currency: 'USD',
-            profitMargin: 0
-          },
-          resources: {
-            teamMembers: [],
-            requiredSkills: [],
-            equipmentNeeded: []
-          }
-        }
-      })
-    } else {
-      createProject({
-        name: projectName,
-        description: projectDescription,
-        constructionName: constructionName,
-        address: address,
-        beneficiary: beneficiary,
-        designer: designer,
-        builder: builder,
-        startDate: startDate,
-        endDate: endDate,
-        tabs: {
-          general: {
-            projectType: '',
-            clientName: '',
-            startDate: new Date(),
-            endDate: new Date()
-          },
-          technical: {
-            technologies: [],
-            complexity: 'Low',
-            technicalRequirements: ''
-          },
-          financial: {
-            budget: 0,
-            estimatedCost: 0,
-            currency: 'USD',
-            profitMargin: 0
-          },
-          resources: {
-            teamMembers: [],
-            requiredSkills: [],
-            equipmentNeeded: []
-          }
-        }
-      })
+    if (!projectName.trim()) {
+      alert('Project name is required');
+      return;
     }
 
-    handleCloseModal()
-  }
+    const projectData = {
+      name: projectName.trim(),
+      description: projectDescription?.trim() || '',
+      constructionName: constructionName?.trim() || '',
+      address: address?.trim() || '',
+      beneficiary: beneficiary?.trim() || '',
+      designer: designer?.trim() || '',
+      builder: builder?.trim() || '',
+      startDate: startDate || new Date(),
+      endDate: endDate || new Date(),
+      updatedAt: new Date(),
+      tabs: {
+        general: {
+          projectType: '',
+          clientName: '',
+          startDate: new Date(),
+          endDate: new Date()
+        },
+        technical: {
+          technologies: [],
+          complexity: 'Low',
+          technicalRequirements: '',
+          productDescription: '',
+          technicalCharacteristics: '',
+          productionConditions: ''
+        },
+        financial: {
+          budget: 0,
+          estimatedCost: 0,
+          currency: 'USD',
+          profitMargin: 0
+        },
+        resources: {
+          teamMembers: [],
+          requiredSkills: [],
+          equipmentNeeded: []
+        }
+      }
+    };
+
+    if (editingProject) {
+      updateProject(editingProject.id, projectData);
+    } else {
+      createProject(projectData);
+    }
+
+    handleCloseModal();
+  };
 
   const handleInputChange = (tab: keyof Project['tabs'], field: string, value: any) => {
     if (!selectedProject) return;
@@ -486,8 +461,16 @@ const Dashboard: React.FC = () => {
             <p>{selectedProject?.tabs.technical.complexity}</p>
           </div>
           <div>
-            <h3 className="font-semibold">Technical Requirements</h3>
-            <p className="whitespace-pre-wrap">{selectedProject?.tabs.technical.technicalRequirements || 'Not specified'}</p>
+            <h3 className="font-semibold">Product Description</h3>
+            <p className="whitespace-pre-wrap">{selectedProject?.tabs.technical.productDescription || 'Not specified'}</p>
+          </div>
+          <div>
+            <h3 className="font-semibold">Technical Characteristics</h3>
+            <p className="whitespace-pre-wrap">{selectedProject?.tabs.technical.technicalCharacteristics || 'Not specified'}</p>
+          </div>
+          <div>
+            <h3 className="font-semibold">Production Conditions</h3>
+            <p className="whitespace-pre-wrap">{selectedProject?.tabs.technical.productionConditions || 'Not specified'}</p>
           </div>
         </div>
         {selectedProject?.tabs.technical.uploadedFile && (
@@ -567,56 +550,113 @@ const Dashboard: React.FC = () => {
 
   const renderProjectCreationForm = () => (
     <div className="space-y-4">
-      <input 
-        type="text"
-        placeholder="Denumirea construcției"
-        value={constructionName}
-        onChange={(e) => setConstructionName(e.target.value)}
-        className="w-full p-2 border rounded-md focus:ring-2 focus:ring-primary-500"
-      />
-      <input 
-        type="text"
-        placeholder="Adresa și localizarea"
-        value={address}
-        onChange={(e) => setAddress(e.target.value)}
-        className="w-full p-2 border rounded-md focus:ring-2 focus:ring-primary-500"
-      />
-      <input 
-        type="text"
-        placeholder="Beneficiarul"
-        value={beneficiary}
-        onChange={(e) => setBeneficiary(e.target.value)}
-        className="w-full p-2 border rounded-md focus:ring-2 focus:ring-primary-500"
-      />
-      <input 
-        type="text"
-        placeholder="Proiectantul"
-        value={designer}
-        onChange={(e) => setDesigner(e.target.value)}
-        className="w-full p-2 border rounded-md focus:ring-2 focus:ring-primary-500"
-      />
-      <input 
-        type="text"
-        placeholder="Constructorul"
-        value={builder}
-        onChange={(e) => setBuilder(e.target.value)}
-        className="w-full p-2 border rounded-md focus:ring-2 focus:ring-primary-500"
-      />
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Project Name <span className="text-red-500">*</span>
+        </label>
+        <input 
+          type="text"
+          placeholder="Enter project name"
+          value={projectName}
+          onChange={(e) => setProjectName(e.target.value)}
+          className="w-full p-2 border rounded-md focus:ring-2 focus:ring-primary-500"
+          required
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Description
+        </label>
+        <textarea
+          placeholder="Enter project description"
+          value={projectDescription}
+          onChange={(e) => setProjectDescription(e.target.value)}
+          className="w-full p-2 border rounded-md focus:ring-2 focus:ring-primary-500"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Construction Name
+        </label>
+        <input 
+          type="text"
+          placeholder="Enter construction name"
+          value={constructionName}
+          onChange={(e) => setConstructionName(e.target.value)}
+          className="w-full p-2 border rounded-md focus:ring-2 focus:ring-primary-500"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Address
+        </label>
+        <input 
+          type="text"
+          placeholder="Enter address"
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
+          className="w-full p-2 border rounded-md focus:ring-2 focus:ring-primary-500"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Beneficiary
+        </label>
+        <input 
+          type="text"
+          placeholder="Enter beneficiary"
+          value={beneficiary}
+          onChange={(e) => setBeneficiary(e.target.value)}
+          className="w-full p-2 border rounded-md focus:ring-2 focus:ring-primary-500"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Designer
+        </label>
+        <input 
+          type="text"
+          placeholder="Enter designer"
+          value={designer}
+          onChange={(e) => setDesigner(e.target.value)}
+          className="w-full p-2 border rounded-md focus:ring-2 focus:ring-primary-500"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Builder
+        </label>
+        <input 
+          type="text"
+          placeholder="Enter builder"
+          value={builder}
+          onChange={(e) => setBuilder(e.target.value)}
+          className="w-full p-2 border rounded-md focus:ring-2 focus:ring-primary-500"
+        />
+      </div>
       <div className="grid grid-cols-2 gap-4">
-        <input 
-          type="date"
-          placeholder="Data începerii lucrărilor"
-          value={startDate.toISOString().split('T')[0]}
-          onChange={(e) => setStartDate(new Date(e.target.value))}
-          className="w-full p-2 border rounded-md focus:ring-2 focus:ring-primary-500"
-        />
-        <input 
-          type="date"
-          placeholder="Data finalizării lucrărilor"
-          value={endDate.toISOString().split('T')[0]}
-          onChange={(e) => setEndDate(new Date(e.target.value))}
-          className="w-full p-2 border rounded-md focus:ring-2 focus:ring-primary-500"
-        />
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Start Date
+          </label>
+          <input 
+            type="date"
+            value={startDate.toISOString().split('T')[0]}
+            onChange={(e) => setStartDate(new Date(e.target.value))}
+            className="w-full p-2 border rounded-md focus:ring-2 focus:ring-primary-500"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            End Date
+          </label>
+          <input 
+            type="date"
+            value={endDate.toISOString().split('T')[0]}
+            onChange={(e) => setEndDate(new Date(e.target.value))}
+            className="w-full p-2 border rounded-md focus:ring-2 focus:ring-primary-500"
+          />
+        </div>
       </div>
     </div>
   );
@@ -780,8 +820,8 @@ const Dashboard: React.FC = () => {
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Descrierea Produsului</label>
                       <textarea
-                        value={selectedProject.tabs.technical.technicalRequirements}
-                        onChange={(e) => handleInputChange('technical', 'technicalRequirements', e.target.value)}
+                        value={selectedProject.tabs.technical.productDescription}
+                        onChange={(e) => handleInputChange('technical', 'productDescription', e.target.value)}
                         className="w-full px-3 py-2 text-base rounded-md border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors min-h-[150px]"
                         placeholder="Introduceți descrierea detaliată a produsului"
                       />
@@ -789,19 +829,19 @@ const Dashboard: React.FC = () => {
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Caracteristici Tehnice</label>
                       <textarea
-                        value={selectedProject.tabs.technical.technicalRequirements}
-                        onChange={(e) => handleInputChange('technical', 'technicalRequirements', e.target.value)}
+                        value={selectedProject.tabs.technical.technicalCharacteristics}
+                        onChange={(e) => handleInputChange('technical', 'technicalCharacteristics', e.target.value)}
                         className="w-full px-3 py-2 text-base rounded-md border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors min-h-[150px]"
                         placeholder="Specificați caracteristicile tehnice principale"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Cerințe de Calitate</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Condiții de Producție</label>
                       <textarea
-                        value={selectedProject.tabs.technical.technicalRequirements}
-                        onChange={(e) => handleInputChange('technical', 'technicalRequirements', e.target.value)}
+                        value={selectedProject.tabs.technical.productionConditions}
+                        onChange={(e) => handleInputChange('technical', 'productionConditions', e.target.value)}
                         className="w-full px-3 py-2 text-base rounded-md border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors min-h-[150px]"
-                        placeholder="Specificați cerințele de calitate"
+                        placeholder="Descrieți condițiile necesare pentru producție"
                       />
                     </div>
                     <div>
@@ -889,16 +929,6 @@ const Dashboard: React.FC = () => {
                 <TabsContent value="resources" className="mt-6">
                   <div className="space-y-6 bg-white p-8 rounded-xl shadow-sm">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Echipamente Necesare</label>
-                      <input
-                        type="text"
-                        value={selectedProject.tabs.resources.equipmentNeeded.join(', ')}
-                        onChange={(e) => handleInputChange('resources', 'equipmentNeeded', e.target.value.split(',').map(t => t.trim()))}
-                        className="w-full px-3 py-2 text-base rounded-md border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-                        placeholder="Introduceți echipamentele necesare (separate prin virgulă)"
-                      />
-                    </div>
-                    <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Personal Necesar</label>
                       <input
                         type="text"
@@ -919,12 +949,13 @@ const Dashboard: React.FC = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Condiții de Producție</label>
-                      <textarea
-                        value={selectedProject.tabs.resources.technicalRequirements}
-                        onChange={(e) => handleInputChange('resources', 'technicalRequirements', e.target.value)}
-                        className="w-full px-3 py-2 text-base rounded-md border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors min-h-[150px]"
-                        placeholder="Descrieți condițiile necesare pentru producție"
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Echipamente Necesare</label>
+                      <input
+                        type="text"
+                        value={selectedProject.tabs.resources.equipmentNeeded.join(', ')}
+                        onChange={(e) => handleInputChange('resources', 'equipmentNeeded', e.target.value.split(',').map(t => t.trim()))}
+                        className="w-full px-3 py-2 text-base rounded-md border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                        placeholder="Introduceți echipamentele necesare (separate prin virgulă)"
                       />
                     </div>
                     <div className="flex justify-end pt-4">
