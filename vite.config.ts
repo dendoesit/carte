@@ -18,7 +18,8 @@ export default defineConfig({
     chunkSizeWarningLimit: 1000,
     rollupOptions: {
       external: [
-        'pdfjs-dist'
+        'pdfjs-dist',
+        'react-helmet-async'
       ],
       output: {
         manualChunks: {
@@ -28,7 +29,8 @@ export default defineConfig({
           'icons': ['lucide-react']
         },
         globals: {
-          'pdfjs-dist': 'pdfjsLib'
+          'pdfjs-dist': 'pdfjsLib',
+          'react-helmet-async': 'ReactHelmetAsync'
         }
       }
     }
@@ -39,7 +41,8 @@ export default defineConfig({
       'react-dom', 
       'react-router-dom',
       'jspdf',
-      'html2canvas'
+      'html2canvas',
+      'react-helmet-async'
     ],
     exclude: ['pdfjs-dist']
   },
