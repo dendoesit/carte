@@ -1,0 +1,22 @@
+@media print {
+  @page {
+    margin: 20mm;
+  }
+
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Hide non-printable elements */
+  .no-print {
+    display: none !important;
+  }
+
+  /* Show all tab content when printing */
+  [role="tabpanel"] {
+    display: block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+} 

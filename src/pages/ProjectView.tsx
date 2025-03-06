@@ -1,28 +1,29 @@
 import { useRef } from 'react';
-import { Button } from '@/components/ui/button';
-import { usePrint } from '@/hooks/usePrint';
+import { useProjects } from '@/context/ProjectContext';
 import type { Project } from '@/types/Project';
+import PdfExportButton from '@/components/PdfExportButton';
 
-interface ProjectViewProps {
-  project: Project;
-}
-
-export default function ProjectView({ project }: ProjectViewProps) {
+export default function ProjectView() {
+  const { projects, selectedProject } = useProjects();
   const componentRef = useRef<HTMLDivElement>(null);
-  const handlePrint = usePrint(componentRef);
+
+  if (!selectedProject) {
+    return <div>No project selected</div>;
+  }
 
   return (
-    <div ref={componentRef}>
-      <h1>{project.name}</h1>
-      <div className="project-details">
-        <p>Client: {project.tabs.general.clientName}</p>
-        <p>Start Date: {project.tabs.general.startDate}</p>
-        <p>End Date: {project.tabs.general.endDate}</p>
-        {/* Add more project details as needed */}
+    <div>
+      <div ref={componentRef}>
+        <h1>{selectedProject.name}</h1>
+        <div className="project-details">
+          <p>Client: {selectedProject.tabs.general.clientName}</p>
+          <p>Start Date: {selectedProject.tabs.general.startDate}</p>
+          <p>End Date: {selectedProject.tabs.general.endDate}</p>
+          {/* Add more project details as needed */}
+        </div>
       </div>
-      <Button onClick={handlePrint} className="flex items-center gap-2">
-        Print
-      </Button>
+      
+      <PdfExportButton project={selectedProject} />
     </div>
   );
 } 

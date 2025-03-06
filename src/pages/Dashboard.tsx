@@ -10,13 +10,12 @@ import {
   UserIcon,
   EyeIcon,
   PencilIcon,
-  Download,
   Save,
-  Upload
+  Upload,
 } from 'lucide-react'
 import { Project, GeneralTab } from '@/types/Project'
-import { usePrint } from '@/hooks/usePrint';
 import * as pdfjsLib from 'pdfjs-dist';
+import PdfExportButton from "@/components/PdfExportButton";
 
 // Set worker source (add this near the top of the file)
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
@@ -40,7 +39,6 @@ const Dashboard: React.FC = () => {
   const [endDate, setEndDate] = useState<string>('');
 
   const componentRef = useRef<HTMLDivElement>(null);
-  const handlePrint = usePrint(componentRef);
 
   const handleOpenModal = (project?: Project) => {
     if (project) {
@@ -108,11 +106,13 @@ const Dashboard: React.FC = () => {
         },
         technical: {
           technologies: [],
-          complexity: '',
+          complexity: "Low" as const,
           productDescription: '',
           technicalCharacteristics: '',
           productionConditions: '',
-          uploadedFile: undefined
+          uploadedFile: undefined,
+          specifications: '',
+          technicalRequirements: ''
         },
         financial: {
           budget: 0,
@@ -720,10 +720,7 @@ const Dashboard: React.FC = () => {
               <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-bold text-gray-900">{selectedProject.name}</h1>
                 <div className="flex items-center gap-4">
-                  <Button onClick={() => handlePrint()} className="flex items-center gap-2">
-                    <Download className="w-4 h-4" />
-                    Export PDF
-                  </Button>
+                  <PdfExportButton project={selectedProject} />
                 </div>
               </div>
 

@@ -1,20 +1,19 @@
-import { type RefObject } from 'react';
 import { Button } from '@/components/ui/button';
-import { usePrint } from '@/hooks/usePrint';
+import { Printer } from 'lucide-react';
 
 interface PrintButtonProps {
-  contentRef: RefObject<HTMLElement>;
+  onPrint?: () => void;
 }
 
-export function PrintButton({ contentRef }: PrintButtonProps) {
-  const onPrint = usePrint(contentRef);
-
+export function PrintButton({ onPrint = () => {} }: PrintButtonProps) {
   return (
     <Button
       onClick={onPrint}
       className="flex items-center gap-2"
+      variant="outline"
     >
-      Print
+      <Printer className="h-4 w-4" />
+      <span>Printează</span>
     </Button>
   );
 } 

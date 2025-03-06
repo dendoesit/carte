@@ -1,50 +1,155 @@
-import { useRef } from "react";
+import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import PdfExportButtons from "@/components/PdfExportButtons";
+import type { Project } from "@/types/Project";
+import PdfExportButton from "./PdfExportButton";
 
-export default function DocumentationTabs() {
-  // Create refs for each tab content
-  const generalInfoRef = useRef<HTMLDivElement>(null);
-  const technicalSpecsRef = useRef<HTMLDivElement>(null);
-  const requirementsRef = useRef<HTMLDivElement>(null);
+interface DocumentationTabsProps {
+  project: Project;
+}
+
+export default function DocumentationTabs({ project }: DocumentationTabsProps) {
+  const [activeTab, setActiveTab] = useState("general");
 
   return (
-    <Tabs defaultValue="general" className="w-full">
-      <TabsList>
-        <TabsTrigger value="general">Informații Generale</TabsTrigger>
-        <TabsTrigger value="technical">Specificații Tehnice</TabsTrigger>
-        <TabsTrigger value="requirements">Cerințe</TabsTrigger>
-      </TabsList>
+    <div className="w-full">
+      <div className="flex justify-between items-center mb-4">
+        <TabsList>
+          <TabsTrigger value="general">Informații Generale</TabsTrigger>
+          <TabsTrigger value="technical">Specificații Tehnice</TabsTrigger>
+          <TabsTrigger value="financial">Financiar</TabsTrigger>
+          <TabsTrigger value="resources">Resurse</TabsTrigger>
+        </TabsList>
+        
+        <PdfExportButton project={project} />
+      </div>
 
-      <TabsContent value="general">
-        <PdfExportButtons 
-          contentRef={generalInfoRef}
-          pageName="General Information"
-        />
-        <div ref={generalInfoRef} className="p-4 bg-white rounded-lg shadow">
-          {/* Your general info content */}
-        </div>
-      </TabsContent>
+      <div className="mt-4">
+        <Tabs 
+          value={activeTab} 
+          onValueChange={setActiveTab}
+          className="w-full"
+        >
+          {/* General Information */}
+          <TabsContent value="general">
+            <div className="p-4 bg-white rounded-lg shadow">
+              <h2 className="text-xl font-bold mb-4">Informații Generale</h2>
+              <div className="space-y-4">
+                <div>
+                  <span className="font-semibold">Nume Proiect: </span>
+                  <span>{project.name}</span>
+                </div>
+                <div>
+                  <span className="font-semibold">Descriere: </span>
+                  <span>{project.description}</span>
+                </div>
+                <div>
+                  <span className="font-semibold">Nume Construcție: </span>
+                  <span>{project.constructionName}</span>
+                </div>
+                <div>
+                  <span className="font-semibold">Adresă: </span>
+                  <span>{project.address}</span>
+                </div>
+                <div>
+                  <span className="font-semibold">Beneficiar: </span>
+                  <span>{project.beneficiary}</span>
+                </div>
+                <div>
+                  <span className="font-semibold">Proiectant: </span>
+                  <span>{project.designer}</span>
+                </div>
+                <div>
+                  <span className="font-semibold">Constructor: </span>
+                  <span>{project.builder}</span>
+                </div>
+              </div>
+            </div>
+          </TabsContent>
 
-      <TabsContent value="technical">
-        <PdfExportButtons 
-          contentRef={technicalSpecsRef}
-          pageName="Technical Specifications"
-        />
-        <div ref={technicalSpecsRef} className="p-4 bg-white rounded-lg shadow">
-          {/* Your technical specs content */}
-        </div>
-      </TabsContent>
+          {/* Technical Specifications */}
+          <TabsContent value="technical">
+            <div className="p-4 bg-white rounded-lg shadow">
+              <h2 className="text-xl font-bold mb-4">Specificații Tehnice</h2>
+              <div className="space-y-4">
+                {project.tabs?.technical && (
+                  <>
+                    <div>
+                      <span className="font-semibold">Tehnologii: </span>
+                      <span>{project.tabs.technical.technologies?.join(", ")}</span>
+                    </div>
+                    <div>
+                      <span className="font-semibold">Complexitate: </span>
+                      <span>{project.tabs.technical.complexity}</span>
+                    </div>
+                    <div>
+                      <span className="font-semibold">Descriere Produs: </span>
+                      <span>{project.tabs.technical.productDescription}</span>
+                    </div>
+                    <div>
+                      <span className="font-semibold">Caracteristici Tehnice: </span>
+                      <span>{project.tabs.technical.technicalCharacteristics}</span>
+                    </div>
+                    <div>
+                      <span className="font-semibold">Condiții de Producție: </span>
+                      <span>{project.tabs.technical.productionConditions}</span>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </TabsContent>
 
-      <TabsContent value="requirements">
-        <PdfExportButtons 
-          contentRef={requirementsRef}
-          pageName="Requirements"
-        />
-        <div ref={requirementsRef} className="p-4 bg-white rounded-lg shadow">
-          {/* Your requirements content */}
-        </div>
-      </TabsContent>
-    </Tabs>
+          {/* Financial Information */}
+          <TabsContent value="financial">
+            <div className="p-4 bg-white rounded-lg shadow">
+              <h2 className="text-xl font-bold mb-4">Informații Financiare</h2>
+              <div className="space-y-4">
+                {project.tabs?.financial && (
+                  <>
+                    <div>
+                      <span className="font-semibold">Buget: </span>
+                      <span>{project.tabs.financial.budget} {project.tabs.financial.currency}</span>
+                    </div>
+                    <div>
+                      <span className="font-semibold">Cost Estimat: </span>
+                      <span>{project.tabs.financial.estimatedCost} {project.tabs.financial.currency}</span>
+                    </div>
+                    <div>
+                      <span className="font-semibold">Marjă de Profit: </span>
+                      <span>{project.tabs.financial.profitMargin}%</span>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* Resources */}
+          <TabsContent value="resources">
+            <div className="p-4 bg-white rounded-lg shadow">
+              <h2 className="text-xl font-bold mb-4">Resurse</h2>
+              <div className="space-y-4">
+                {project.tabs?.resources && (
+                  <>
+                    <div>
+                      <span className="font-semibold">Membri Echipă: </span>
+                      <span>{project.tabs.resources.teamMembers?.join(", ")}</span>
+                    </div>
+                    <div>
+                      <span className="font-semibold">Abilități Necesare: </span>
+                      <span>{project.tabs.resources.requiredSkills?.join(", ")}</span>
+                    </div>
+                    <div>
+                      <span className="font-semibold">Echipamente Necesare: </span>
+                      <span>{project.tabs.resources.equipmentNeeded?.join(", ")}</span>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
   );
 } 
