@@ -16,18 +16,33 @@ export default defineConfig({
     sourcemap: false,
     chunkSizeWarningLimit: 1000,
     rollupOptions: {
+      external: [
+        'pdfjs-dist'
+      ],
       output: {
         manualChunks: {
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
           'ui-vendor': ['@radix-ui/react-slot', '@radix-ui/react-tabs', 'class-variance-authority', 'clsx', 'tailwind-merge'],
           'pdf-vendor': ['jspdf', 'html2canvas'],
           'icons': ['lucide-react']
+        },
+        globals: {
+          'pdfjs-dist': 'pdfjsLib'
         }
       }
     }
   },
+  optimizeDeps: {
+    include: [
+      'react', 
+      'react-dom', 
+      'react-router-dom',
+      'jspdf',
+      'html2canvas'
+    ],
+    exclude: ['pdfjs-dist']
+  },
   server: {
     port: 3000
   }
-}) 
 }) 
