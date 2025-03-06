@@ -8,14 +8,15 @@ pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/b
 
 interface PdfViewerProps {
   file: string;
-  scale?: number;
+  initialScale?: number;
 }
 
-export default function PdfViewer({ file, scale = 1.0 }: PdfViewerProps) {
+export default function PdfViewer({ file, initialScale = 1.0 }: PdfViewerProps) {
   const [numPages, setNumPages] = useState<number | null>(null);
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<boolean>(false);
+  const [scale, setScale] = useState<number>(initialScale);
 
   function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
     setNumPages(numPages);
