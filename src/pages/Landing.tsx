@@ -1,6 +1,9 @@
 import { Button } from "@/components/ui/button";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import SEO from '@/components/SEO';
+import timeSavingIcon from '@/assets/icons/time-saving.svg';
+import easyUseIcon from '@/assets/icons/easy-use.svg';
+import digitalDocsIcon from '@/assets/icons/digital-docs.svg';
 
 const SocialIcon = ({ children, href, label }: { children: React.ReactNode, href: string, label: string }) => (
   <a 
@@ -16,39 +19,16 @@ const SocialIcon = ({ children, href, label }: { children: React.ReactNode, href
 
 // Define static image paths
 const IMAGES = {
-  timeSaving: '/images/time-saving.png',
-  easyUse: '/images/easy-use.png',
-  digitalDocs: '/images/digital-docs.png'
+  timeSaving: timeSavingIcon,
+  easyUse: easyUseIcon,
+  digitalDocs: digitalDocsIcon
 } as const;
 
 export default function Landing() {
-  const navigate = useNavigate();
-  
-  // Use import.meta.url to reference assets with absolute paths
-  const getAssetPath = (filename) => new URL(`../assets/icons/${filename}`, import.meta.url).href;
-  
-  const features = [
-    {
-      icon: getAssetPath('feature-1.svg'),
-      title: 'Dashboard',
-      description: 'Get a quick overview of your projects and their status'
-    },
-    {
-      icon: getAssetPath('feature-2.svg'),
-      title: 'Projects',
-      description: 'Manage and track all your projects in one place'
-    },
-    {
-      icon: getAssetPath('feature-3.svg'),
-      title: 'Reports',
-      description: 'Generate detailed reports and analytics'
-    },
-    {
-      icon: getAssetPath('feature-4.svg'),
-      title: 'Settings',
-      description: 'Customize your workspace preferences'
-    }
-  ];
+  // Add error handling for images
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    console.error('Image failed to load:', e);
+  };
 
   return (
     <>
@@ -132,6 +112,7 @@ export default function Landing() {
                     src={IMAGES.timeSaving}
                     alt="Economisire timp" 
                     className="h-32 w-32"
+                    onError={handleImageError}
                   />
                 </div>
                 <h3 className="mt-4 text-xl font-medium text-gray-900">
@@ -149,6 +130,7 @@ export default function Landing() {
                     src={IMAGES.easyUse}
                     alt="Ușor de folosit" 
                     className="h-32 w-32"
+                    onError={handleImageError}
                   />
                 </div>
                 <h3 className="mt-4 text-xl font-medium text-gray-900">
@@ -166,6 +148,7 @@ export default function Landing() {
                     src={IMAGES.digitalDocs}
                     alt="Copii digitale" 
                     className="h-32 w-32"
+                    onError={handleImageError}
                   />
                 </div>
                 <h3 className="mt-4 text-xl font-medium text-gray-900">
