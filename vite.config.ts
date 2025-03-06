@@ -16,6 +16,7 @@ export default defineConfig({
     assetsDir: 'assets',
     sourcemap: false,
     chunkSizeWarningLimit: 1000,
+    assetsInlineLimit: 0,
     rollupOptions: {
       external: [
         'react-helmet-async',
@@ -53,5 +54,6 @@ export default defineConfig({
   },
   server: {
     port: 3000
-  }
+  },
+  assetsInclude: ['**/*.svg'],
 } as UserConfig) 
