@@ -18,33 +18,38 @@ export default defineConfig({
     chunkSizeWarningLimit: 1000,
     rollupOptions: {
       external: [
+        'react-helmet-async',
+        'jspdf',
+        'html2canvas',
         'pdfjs-dist',
-        'react-helmet-async'
+        'react-to-print'
       ],
       output: {
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'ui-vendor': ['@radix-ui/react-slot', '@radix-ui/react-tabs', 'class-variance-authority', 'clsx', 'tailwind-merge'],
-          'pdf-vendor': ['jspdf', 'html2canvas'],
-          'icons': ['lucide-react']
-        },
         globals: {
+          'react-helmet-async': 'ReactHelmetAsync',
+          'jspdf': 'jsPDF',
+          'html2canvas': 'html2canvas',
           'pdfjs-dist': 'pdfjsLib',
-          'react-helmet-async': 'ReactHelmetAsync'
-        }
-      }
+          'react-to-print': 'ReactToPrint'
+        },
+      },
+    },
+    commonjsOptions: {
+      include: [/node_modules/],
+      transformMixedEsModules: true
     }
   },
   optimizeDeps: {
     include: [
-      'react', 
-      'react-dom', 
-      'react-router-dom',
+      'react-helmet-async',
       'jspdf',
       'html2canvas',
-      'react-helmet-async'
+      'pdfjs-dist',
+      'react-to-print'
     ],
-    exclude: ['pdfjs-dist']
+    esbuildOptions: {
+      target: 'es2020'
+    }
   },
   server: {
     port: 3000
