@@ -15,11 +15,11 @@ export default defineConfig({
       output: {
         manualChunks: {
           pdfjs: ['pdfjs-dist'],
-        },
+        }
       },
     },
   },
   optimizeDeps: {
-    include: ['pdfjs-dist'],
+    include: ['pdfjs-dist']
   },
 }) 
