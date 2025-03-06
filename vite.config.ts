@@ -46,7 +46,8 @@ export default defineConfig({
       'jspdf',
       'html2canvas',
       'pdfjs-dist',
-      'react-to-print'
+      'react-to-print',
+      'react-pdf'
     ],
     esbuildOptions: {
       target: 'es2020'
@@ -55,5 +56,5 @@ export default defineConfig({
   server: {
     port: 3000
   },
-  assetsInclude: ['**/*.svg'],
+  assetsInclude: ['**/*.svg', '**/*.pdf'],
 } as UserConfig) 
