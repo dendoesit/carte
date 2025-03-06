@@ -1,14 +1,24 @@
 import React from 'react'
-import { RouterProvider } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from '@/context/AuthContext'
 import { ProjectProvider } from '@/context/ProjectContext'
-import router from './router'
+import Landing from './pages/Landing'
+import Login from './pages/Login'
+import Signup from './pages/Signup'
+import Dashboard from './pages/Dashboard'
 
 const App: React.FC = () => {
   return (
     <AuthProvider>
       <ProjectProvider>
-        <RouterProvider router={router} />
+        <Router>
+          <Routes>
+            <Route path="/" element={<Landing />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+          </Routes>
+        </Router>
       </ProjectProvider>
     </AuthProvider>
   )
