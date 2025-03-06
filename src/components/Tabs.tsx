@@ -8,9 +8,6 @@ export default function DocumentationTabs() {
   const technicalSpecsRef = useRef<HTMLDivElement>(null);
   const requirementsRef = useRef<HTMLDivElement>(null);
 
-  // Array of all refs for the "Export All" functionality
-  const allTabRefs = [generalInfoRef, technicalSpecsRef, requirementsRef];
-
   return (
     <Tabs defaultValue="general" className="w-full">
       <TabsList>
@@ -21,9 +18,8 @@ export default function DocumentationTabs() {
 
       <TabsContent value="general">
         <PdfExportButtons 
-          tabRef={generalInfoRef}
-          tabName="Informații Generale"
-          allTabRefs={allTabRefs}
+          contentRef={generalInfoRef}
+          pageName="General Information"
         />
         <div ref={generalInfoRef} className="p-4 bg-white rounded-lg shadow">
           {/* Your general info content */}
@@ -32,9 +28,8 @@ export default function DocumentationTabs() {
 
       <TabsContent value="technical">
         <PdfExportButtons 
-          tabRef={technicalSpecsRef}
-          tabName="Specificații Tehnice"
-          allTabRefs={allTabRefs}
+          contentRef={technicalSpecsRef}
+          pageName="Technical Specifications"
         />
         <div ref={technicalSpecsRef} className="p-4 bg-white rounded-lg shadow">
           {/* Your technical specs content */}
@@ -43,9 +38,8 @@ export default function DocumentationTabs() {
 
       <TabsContent value="requirements">
         <PdfExportButtons 
-          tabRef={requirementsRef}
-          tabName="Cerințe"
-          allTabRefs={allTabRefs}
+          contentRef={requirementsRef}
+          pageName="Requirements"
         />
         <div ref={requirementsRef} className="p-4 bg-white rounded-lg shadow">
           {/* Your requirements content */}

@@ -1,12 +1,12 @@
-import { useRef } from 'react';
+import { type RefObject } from 'react';
 import { Button } from "@/components/ui/button";
 import { exportElementToPDF, combinePagesToPDF } from '@/utils/pdfUtils';
 import { Download } from 'lucide-react';
 
-interface PdfExportButtonsProps {
-  contentRef: React.RefObject<HTMLElement>;
+export interface PdfExportButtonsProps {
+  contentRef: RefObject<HTMLElement>;
   pageName: string;
-  allPagesRefs?: React.RefObject<HTMLElement>[];
+  allPagesRefs?: RefObject<HTMLElement>[];
 }
 
 export default function PdfExportButtons({ 

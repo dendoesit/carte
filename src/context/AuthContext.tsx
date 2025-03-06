@@ -1,4 +1,5 @@
-import React, { createContext, useState, useContext, ReactNode } from 'react'
+import React, { createContext, useState, useContext } from 'react'
+import type { PropsWithChildren } from 'react'
 
 interface User {
   id: string
@@ -15,7 +16,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export function AuthProvider({ children }: PropsWithChildren) {
   const [user, setUser] = useState<User | null>(null)
 
   const login = async (username: string, password: string): Promise<boolean> => {
@@ -38,16 +39,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     localStorage.removeItem('user')
   }
 
-  const register = async (username: string, email: string, password: string): Promise<boolean> => {
-    // Simulated registration - replace with actual API call
-    const mockUser = {
-      id: Math.random().toString(36).substr(2, 9),
-      username,
-      email
-    }
-    setUser(mockUser)
-    localStorage.setItem('user', JSON.stringify(mockUser))
-    return true
+  const register = async (_username: string, _email: string, _password: string): Promise<boolean> => {
+    // Implementation
+    return true;
   }
 
   // Check for existing user on context initialization

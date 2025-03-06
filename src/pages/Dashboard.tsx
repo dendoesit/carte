@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useRef } from 'react'
 import { useProjects } from '@/context/ProjectContext'
 import { useAuth } from '@/context/AuthContext'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -14,11 +14,11 @@ import {
   Save,
   Upload
 } from 'lucide-react'
-import { Project } from '@/types/Project'
-import { useReactToPrint } from 'react-to-print';
+import { Project, GeneralTab } from '@/types/Project'
+import { usePrint } from '@/hooks/usePrint';
 import * as pdfjsLib from 'pdfjs-dist';
 
-// Initialize PDF.js worker
+// Set worker source (add this near the top of the file)
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 const Dashboard: React.FC = () => {
@@ -30,56 +30,17 @@ const Dashboard: React.FC = () => {
   const [projectDescription, setProjectDescription] = useState('')
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
   const [isSaving, setIsSaving] = useState(false)
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState<Record<string, boolean>>({});
   const [pdfContents, setPdfContents] = useState<Record<string, string>>({});
   const [constructionName, setConstructionName] = useState('');
   const [address, setAddress] = useState('');
   const [beneficiary, setBeneficiary] = useState('');
   const [designer, setDesigner] = useState('');
   const [builder, setBuilder] = useState('');
-  const [startDate, setStartDate] = useState(new Date());
-  const [endDate, setEndDate] = useState(new Date());
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
 
-  const componentRef = React.useRef<HTMLDivElement>(null);
-  const handlePrint = useReactToPrint({
-    content: () => componentRef.current,
-    pageStyle: `
-      @page {
-        size: A4;
-        margin: 2cm;
-      }
-      @media print {
-        body {
-          -webkit-print-color-adjust: exact;
-          print-color-adjust: exact;
-          background: white;
-        }
-        .no-print {
-          display: none !important;
-        }
-        .page-break {
-          page-break-before: always;
-        }
-        .pdf-content {
-          display: block !important;
-          visibility: visible !important;
-          position: static !important;
-          left: auto !important;
-          top: auto !important;
-          width: 100% !important;
-          height: auto !important;
-        }
-        object {
-          display: block !important;
-          visibility: visible !important;
-          width: 100% !important;
-          height: 800px !important;
-          margin: 20px 0 !important;
-        }
-      }
-    `
-  });
+  const componentRef = useRef<HTMLDivElement>(null);
+  const handlePrint = usePrint(componentRef);
 
   const handleOpenModal = (project?: Project) => {
     if (project) {
@@ -91,8 +52,8 @@ const Dashboard: React.FC = () => {
       setBeneficiary(project.beneficiary || '');
       setDesigner(project.designer || '');
       setBuilder(project.builder || '');
-      setStartDate(new Date(project.startDate || ''));
-      setEndDate(new Date(project.endDate || ''));
+      setStartDate(new Date(project.tabs.general.startDate || '').toISOString().split('T')[0]);
+      setEndDate(new Date(project.tabs.general.endDate || '').toISOString().split('T')[0]);
     } else {
       setEditingProject(null)
       setProjectName('')
@@ -102,8 +63,8 @@ const Dashboard: React.FC = () => {
       setBeneficiary('');
       setDesigner('');
       setBuilder('');
-      setStartDate(new Date());
-      setEndDate(new Date());
+      setStartDate(new Date().toISOString().split('T')[0]);
+      setEndDate(new Date().toISOString().split('T')[0]);
     }
     setShowModal(true)
   }
@@ -118,60 +79,32 @@ const Dashboard: React.FC = () => {
     setBeneficiary('');
     setDesigner('');
     setBuilder('');
-    setStartDate(new Date());
-    setEndDate(new Date());
+    setStartDate(new Date().toISOString().split('T')[0]);
+    setEndDate(new Date().toISOString().split('T')[0]);
   }
 
-  const handleSubmit = () => {
-    if (!projectName.trim()) {
-      alert('Project name is required');
-      return;
-    }
+  const handleSubmit = async () => {
+    if (!selectedProject) return;
 
-    const projectData = {
-      name: projectName.trim(),
-      description: projectDescription?.trim() || '',
-      constructionName: constructionName?.trim() || '',
-      address: address?.trim() || '',
-      beneficiary: beneficiary?.trim() || '',
-      designer: designer?.trim() || '',
-      builder: builder?.trim() || '',
-      startDate: startDate || new Date(),
-      endDate: endDate || new Date(),
+    const projectData: Omit<Project, 'id' | 'createdAt'> = {
+      ...selectedProject,
       updatedAt: new Date(),
       tabs: {
+        ...selectedProject.tabs,
         general: {
-          projectType: '',
-          clientName: '',
-          startDate: new Date(),
-          endDate: new Date()
-        },
-        technical: {
-          technologies: [],
-          complexity: 'Low',
-          technicalRequirements: '',
-          productDescription: '',
-          technicalCharacteristics: '',
-          productionConditions: ''
-        },
-        financial: {
-          budget: 0,
-          estimatedCost: 0,
-          currency: 'USD',
-          profitMargin: 0
-        },
-        resources: {
-          teamMembers: [],
-          requiredSkills: [],
-          equipmentNeeded: []
+          ...selectedProject.tabs.general,
+          startDate: startDate,
+          endDate: endDate,
+          projectType: selectedProject.tabs.general.projectType,
+          clientName: selectedProject.tabs.general.clientName
         }
       }
     };
 
-    if (editingProject) {
-      updateProject(editingProject.id, projectData);
+    if (selectedProject.id) {
+      await updateProject(selectedProject.id, projectData);
     } else {
-      createProject(projectData);
+      await createProject(projectData);
     }
 
     handleCloseModal();
@@ -266,7 +199,7 @@ const Dashboard: React.FC = () => {
       return;
     }
 
-    setIsUploading(prev => ({ ...prev, [tab]: true }));
+    setIsSaving(true);
 
     try {
       const fileUrl = URL.createObjectURL(file);
@@ -310,7 +243,7 @@ const Dashboard: React.FC = () => {
       // Clear the file input
       event.target.value = '';
     } finally {
-      setIsUploading(prev => ({ ...prev, [tab]: false }));
+      setIsSaving(false);
     }
   };
 
@@ -363,14 +296,14 @@ const Dashboard: React.FC = () => {
             onChange={(e) => handleFileUpload(e, tab)}
             className="hidden"
             id={`file-upload-${tab}`}
-            disabled={isUploading[tab]}
+            disabled={isSaving}
           />
           <label
             htmlFor={`file-upload-${tab}`}
             className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg cursor-pointer transition-colors"
           >
             <Upload className="w-4 h-4" />
-            {isUploading[tab] ? 'Uploading...' : 'Upload PDF'}
+            {isSaving ? 'Uploading...' : 'Upload PDF'}
           </label>
         </div>
       </div>
@@ -641,8 +574,8 @@ const Dashboard: React.FC = () => {
           </label>
           <input 
             type="date"
-            value={startDate.toISOString().split('T')[0]}
-            onChange={(e) => setStartDate(new Date(e.target.value))}
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
             className="w-full p-2 border rounded-md focus:ring-2 focus:ring-primary-500"
           />
         </div>
@@ -652,14 +585,40 @@ const Dashboard: React.FC = () => {
           </label>
           <input 
             type="date"
-            value={endDate.toISOString().split('T')[0]}
-            onChange={(e) => setEndDate(new Date(e.target.value))}
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
             className="w-full p-2 border rounded-md focus:ring-2 focus:ring-primary-500"
           />
         </div>
       </div>
     </div>
   );
+
+  const handleDateChange = (date: string, field: keyof Pick<GeneralTab, 'startDate' | 'endDate'>) => {
+    if (!selectedProject) return;
+    
+    setSelectedProject({
+      ...selectedProject,
+      tabs: {
+        ...selectedProject.tabs,
+        general: {
+          ...selectedProject.tabs.general,
+          [field]: date
+        }
+      }
+    });
+  };
+
+  // Fix date display
+  const formatDate = (date: string | undefined) => {
+    if (!date) return '';
+    return new Date(date).toISOString().split('T')[0];
+  };
+
+  // Fix array handling
+  const formatArray = (arr: string[] | undefined) => {
+    return arr?.join(', ') || 'Not specified';
+  };
 
   return (
     <div className="flex h-screen bg-gray-100">
@@ -728,7 +687,7 @@ const Dashboard: React.FC = () => {
               <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-bold text-gray-900">{selectedProject.name}</h1>
                 <div className="flex items-center gap-4">
-                  <Button onClick={handlePrint} className="flex items-center gap-2">
+                  <Button onClick={() => handlePrint()} className="flex items-center gap-2">
                     <Download className="w-4 h-4" />
                     Export PDF
                   </Button>
@@ -786,8 +745,8 @@ const Dashboard: React.FC = () => {
                         <label className="block text-sm font-medium text-gray-700 mb-1">Data Emiterii</label>
                         <input
                           type="date"
-                          value={new Date(selectedProject.tabs.general.startDate).toISOString().split('T')[0]}
-                          onChange={(e) => handleInputChange('general', 'startDate', new Date(e.target.value))}
+                          value={formatDate(selectedProject?.tabs.general.startDate)}
+                          onChange={(e) => handleDateChange(e.target.value, 'startDate')}
                           className="w-full px-3 py-2 text-base rounded-md border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
                         />
                       </div>
@@ -795,8 +754,8 @@ const Dashboard: React.FC = () => {
                         <label className="block text-sm font-medium text-gray-700 mb-1">Data Revizuirii</label>
                         <input
                           type="date"
-                          value={new Date(selectedProject.tabs.general.endDate).toISOString().split('T')[0]}
-                          onChange={(e) => handleInputChange('general', 'endDate', new Date(e.target.value))}
+                          value={formatDate(selectedProject?.tabs.general.endDate)}
+                          onChange={(e) => handleDateChange(e.target.value, 'endDate')}
                           className="w-full px-3 py-2 text-base rounded-md border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
                         />
                       </div>
@@ -848,7 +807,7 @@ const Dashboard: React.FC = () => {
                       <label className="block text-sm font-medium text-gray-700 mb-1">Norme și Standarde Aplicate</label>
                       <input
                         type="text"
-                        value={selectedProject.tabs.technical.technologies.join(', ')}
+                        value={formatArray(selectedProject?.tabs.technical.technologies)}
                         onChange={(e) => handleInputChange('technical', 'technologies', e.target.value.split(',').map(t => t.trim()))}
                         className="w-full px-3 py-2 text-base rounded-md border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
                         placeholder="Introduceți normele și standardele aplicabile"
@@ -932,7 +891,7 @@ const Dashboard: React.FC = () => {
                       <label className="block text-sm font-medium text-gray-700 mb-1">Personal Necesar</label>
                       <input
                         type="text"
-                        value={selectedProject.tabs.resources.teamMembers.join(', ')}
+                        value={formatArray(selectedProject?.tabs.resources.teamMembers)}
                         onChange={(e) => handleInputChange('resources', 'teamMembers', e.target.value.split(',').map(t => t.trim()))}
                         className="w-full px-3 py-2 text-base rounded-md border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
                         placeholder="Introduceți personalul necesar (separat prin virgulă)"
@@ -942,7 +901,7 @@ const Dashboard: React.FC = () => {
                       <label className="block text-sm font-medium text-gray-700 mb-1">Calificări Necesare</label>
                       <input
                         type="text"
-                        value={selectedProject.tabs.resources.requiredSkills.join(', ')}
+                        value={formatArray(selectedProject?.tabs.resources.requiredSkills)}
                         onChange={(e) => handleInputChange('resources', 'requiredSkills', e.target.value.split(',').map(t => t.trim()))}
                         className="w-full px-3 py-2 text-base rounded-md border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
                         placeholder="Introduceți calificările necesare (separate prin virgulă)"
@@ -952,7 +911,7 @@ const Dashboard: React.FC = () => {
                       <label className="block text-sm font-medium text-gray-700 mb-1">Echipamente Necesare</label>
                       <input
                         type="text"
-                        value={selectedProject.tabs.resources.equipmentNeeded.join(', ')}
+                        value={formatArray(selectedProject?.tabs.resources.equipmentNeeded)}
                         onChange={(e) => handleInputChange('resources', 'equipmentNeeded', e.target.value.split(',').map(t => t.trim()))}
                         className="w-full px-3 py-2 text-base rounded-md border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
                         placeholder="Introduceți echipamentele necesare (separate prin virgulă)"

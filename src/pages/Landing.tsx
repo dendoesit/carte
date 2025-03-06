@@ -1,11 +1,5 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import TimeSavingIcon from '@/assets/icons/time-saving.svg';
-import EasyUseIcon from '@/assets/icons/easy-use.svg';
-import DigitalDocsIcon from '@/assets/icons/digital-docs.svg';
-import FacebookIcon from '@/assets/icons/facebook.svg';
-import LinkedinIcon from '@/assets/icons/linkedin.svg';
-import InstagramIcon from '@/assets/icons/instagram.svg';
 import SEO from '@/components/SEO';
 
 const SocialIcon = ({ children, href, label }: { children: React.ReactNode, href: string, label: string }) => (
@@ -19,6 +13,13 @@ const SocialIcon = ({ children, href, label }: { children: React.ReactNode, href
     {children}
   </a>
 );
+
+// Define static image paths
+const IMAGES = {
+  timeSaving: '/images/time-saving.png',
+  easyUse: '/images/easy-use.png',
+  digitalDocs: '/images/digital-docs.png'
+} as const;
 
 export default function Landing() {
   return (
@@ -100,9 +101,9 @@ export default function Landing() {
               <div className="text-center">
                 <div className="flex justify-center">
                   <img 
-                    src={TimeSavingIcon}
+                    src={IMAGES.timeSaving}
                     alt="Economisire timp" 
-                    className="h-20 w-20"
+                    className="h-32 w-32"
                   />
                 </div>
                 <h3 className="mt-4 text-xl font-medium text-gray-900">
@@ -117,9 +118,9 @@ export default function Landing() {
               <div className="text-center">
                 <div className="flex justify-center">
                   <img 
-                    src={EasyUseIcon}
+                    src={IMAGES.easyUse}
                     alt="Ușor de folosit" 
-                    className="h-20 w-20"
+                    className="h-32 w-32"
                   />
                 </div>
                 <h3 className="mt-4 text-xl font-medium text-gray-900">
@@ -134,9 +135,9 @@ export default function Landing() {
               <div className="text-center">
                 <div className="flex justify-center">
                   <img 
-                    src={DigitalDocsIcon}
+                    src={IMAGES.digitalDocs}
                     alt="Copii digitale" 
-                    className="h-20 w-20"
+                    className="h-32 w-32"
                   />
                 </div>
                 <h3 className="mt-4 text-xl font-medium text-gray-900">
