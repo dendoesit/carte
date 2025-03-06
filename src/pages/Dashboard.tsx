@@ -84,30 +84,66 @@ const Dashboard: React.FC = () => {
   }
 
   const handleSubmit = async () => {
-    if (!selectedProject) return;
+    if (!projectName.trim()) {
+      alert('Vă rugăm să introduceți numele proiectului');
+      return;
+    }
 
     const projectData: Omit<Project, 'id' | 'createdAt'> = {
-      ...selectedProject,
+      name: projectName,
+      description: projectDescription,
+      constructionName,
+      address,
+      beneficiary,
+      designer,
+      builder,
       updatedAt: new Date(),
       tabs: {
-        ...selectedProject.tabs,
         general: {
-          ...selectedProject.tabs.general,
+          projectType: '',
+          clientName: '',
           startDate: startDate,
           endDate: endDate,
-          projectType: selectedProject.tabs.general.projectType,
-          clientName: selectedProject.tabs.general.clientName
+          uploadedFile: undefined
+        },
+        technical: {
+          technologies: [],
+          complexity: '',
+          productDescription: '',
+          technicalCharacteristics: '',
+          productionConditions: '',
+          uploadedFile: undefined
+        },
+        financial: {
+          budget: 0,
+          estimatedCost: 0,
+          currency: 'RON',
+          profitMargin: 0,
+          uploadedFile: undefined
+        },
+        resources: {
+          teamMembers: [],
+          requiredSkills: [],
+          equipmentNeeded: [],
+          uploadedFile: undefined
         }
       }
     };
 
-    if (selectedProject.id) {
-      await updateProject(selectedProject.id, projectData);
-    } else {
-      await createProject(projectData);
+    try {
+      if (editingProject) {
+        await updateProject(editingProject.id, {
+          ...projectData,
+          id: editingProject.id
+        });
+      } else {
+        await createProject(projectData);
+      }
+      handleCloseModal();
+    } catch (error) {
+      console.error('Error saving project:', error);
+      alert('A apărut o eroare la salvarea proiectului. Vă rugăm să încercați din nou.');
     }
-
-    handleCloseModal();
   };
 
   const handleInputChange = (tab: keyof Project['tabs'], field: string, value: any) => {
@@ -482,116 +518,113 @@ const Dashboard: React.FC = () => {
   );
 
   const renderProjectCreationForm = () => (
-    <div className="space-y-4">
+    <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Project Name <span className="text-red-500">*</span>
+          Numele Proiectului
         </label>
-        <input 
+        <input
           type="text"
-          placeholder="Enter project name"
           value={projectName}
           onChange={(e) => setProjectName(e.target.value)}
-          className="w-full p-2 border rounded-md focus:ring-2 focus:ring-primary-500"
-          required
+          className="w-full px-3 py-2 text-base rounded-md border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+          placeholder="Introduceți numele proiectului"
         />
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Description
+          Descriere
         </label>
         <textarea
-          placeholder="Enter project description"
           value={projectDescription}
           onChange={(e) => setProjectDescription(e.target.value)}
-          className="w-full p-2 border rounded-md focus:ring-2 focus:ring-primary-500"
+          className="w-full px-3 py-2 text-base rounded-md border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+          placeholder="Introduceți descrierea proiectului"
         />
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Construction Name
+          Numele Construcției
         </label>
-        <input 
+        <input
           type="text"
-          placeholder="Enter construction name"
           value={constructionName}
           onChange={(e) => setConstructionName(e.target.value)}
-          className="w-full p-2 border rounded-md focus:ring-2 focus:ring-primary-500"
+          className="w-full px-3 py-2 text-base rounded-md border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+          placeholder="Introduceți numele construcției"
         />
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Address
+          Adresa
         </label>
-        <input 
+        <input
           type="text"
-          placeholder="Enter address"
           value={address}
           onChange={(e) => setAddress(e.target.value)}
-          className="w-full p-2 border rounded-md focus:ring-2 focus:ring-primary-500"
+          className="w-full px-3 py-2 text-base rounded-md border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+          placeholder="Introduceți adresa"
         />
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Beneficiary
+          Beneficiar
         </label>
-        <input 
+        <input
           type="text"
-          placeholder="Enter beneficiary"
           value={beneficiary}
           onChange={(e) => setBeneficiary(e.target.value)}
-          className="w-full p-2 border rounded-md focus:ring-2 focus:ring-primary-500"
+          className="w-full px-3 py-2 text-base rounded-md border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+          placeholder="Introduceți numele beneficiarului"
         />
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Designer
+          Proiectant
         </label>
-        <input 
+        <input
           type="text"
-          placeholder="Enter designer"
           value={designer}
           onChange={(e) => setDesigner(e.target.value)}
-          className="w-full p-2 border rounded-md focus:ring-2 focus:ring-primary-500"
+          className="w-full px-3 py-2 text-base rounded-md border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+          placeholder="Introduceți numele proiectantului"
         />
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Builder
+          Constructor
         </label>
-        <input 
+        <input
           type="text"
-          placeholder="Enter builder"
           value={builder}
           onChange={(e) => setBuilder(e.target.value)}
-          className="w-full p-2 border rounded-md focus:ring-2 focus:ring-primary-500"
+          className="w-full px-3 py-2 text-base rounded-md border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+          placeholder="Introduceți numele constructorului"
         />
       </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Start Date
-          </label>
-          <input 
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="w-full p-2 border rounded-md focus:ring-2 focus:ring-primary-500"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            End Date
-          </label>
-          <input 
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="w-full p-2 border rounded-md focus:ring-2 focus:ring-primary-500"
-          />
-        </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Data Început
+        </label>
+        <input
+          type="date"
+          value={startDate}
+          onChange={(e) => setStartDate(e.target.value)}
+          className="w-full px-3 py-2 text-base rounded-md border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+        />
       </div>
-    </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Data Sfârșit
+        </label>
+        <input
+          type="date"
+          value={endDate}
+          onChange={(e) => setEndDate(e.target.value)}
+          className="w-full px-3 py-2 text-base rounded-md border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+        />
+      </div>
+    </form>
   );
 
   const handleDateChange = (date: string, field: keyof Pick<GeneralTab, 'startDate' | 'endDate'>) => {
@@ -1000,13 +1033,13 @@ const Dashboard: React.FC = () => {
                 onClick={handleCloseModal}
                 className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
               >
-                Cancel
+                Anulare
               </button>
               <button 
                 onClick={handleSubmit}
                 className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
               >
-                {editingProject ? 'Save Changes' : 'Create Project'}
+                {editingProject ? 'Salvează Modificările' : 'Creează Proiect'}
               </button>
             </div>
           </div>
