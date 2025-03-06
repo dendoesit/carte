@@ -3,6 +3,7 @@ import { Project } from '@/types/Project'
 
 interface ProjectContextType {
   projects: Project[]
+  selectedProject?: any
   createProject: (project: Omit<Project, 'id' | 'createdAt'>) => Project
   updateProject: (id: string, updatedProject: Partial<Project>) => void
   deleteProject: (id: string) => void

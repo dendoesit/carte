@@ -1,10 +1,9 @@
 import { useRef } from 'react';
 import { useProjects } from '@/context/ProjectContext';
-import type { Project } from '@/types/Project';
 import PdfExportButton from '@/components/PdfExportButton';
 
 export default function ProjectView() {
-  const { projects, selectedProject } = useProjects();
+  const {  selectedProject } = useProjects();
   const componentRef = useRef<HTMLDivElement>(null);
 
   if (!selectedProject) {
