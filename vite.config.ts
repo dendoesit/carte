@@ -11,15 +11,22 @@ export default defineConfig({
     },
   },
   build: {
+    chunkSizeWarningLimit: 1000,
     rollupOptions: {
       output: {
         manualChunks: {
-          pdfjs: ['pdfjs-dist'],
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'ui-vendor': ['@radix-ui/react-slot', '@radix-ui/react-tabs', 'class-variance-authority', 'clsx', 'tailwind-merge'],
+          'pdf-vendor': ['jspdf', 'html2canvas'],
+          'icons': ['lucide-react'],
         }
-      },
+      }
     },
+    minify: 'esbuild',
+    target: 'es2015',
+    sourcemap: false
   },
   optimizeDeps: {
-    include: ['pdfjs-dist']
+    include: ['react', 'react-dom', 'react-router-dom']
   },
 }) 

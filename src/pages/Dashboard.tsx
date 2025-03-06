@@ -683,7 +683,7 @@ const Dashboard: React.FC = () => {
             className="w-full flex items-center justify-center space-x-2 bg-primary-600 text-white py-2 rounded-md hover:bg-primary-700 transition"
           >
             <PlusIcon size={20} />
-            <span>New Project</span>
+            <span>Proiect nou</span>
           </button>
         </div>
 
@@ -1033,7 +1033,7 @@ const Dashboard: React.FC = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
           <div className="bg-white rounded-lg shadow-xl w-96 p-6">
             <h2 className="text-xl font-semibold mb-4 text-gray-800">
-              {editingProject ? 'Edit Project' : 'Create New Project'}
+              {editingProject ? 'Editare Proiect' : 'Creare Proiect Nou'}
             </h2>
             {renderProjectCreationForm()}
             <div className="flex justify-end space-x-2">
