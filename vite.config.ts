@@ -19,6 +19,7 @@ export default defineConfig({
     assetsInlineLimit: 0,
     rollupOptions: {
       external: [
+        'react-helmet-async',
         'jspdf',
         'html2canvas',
         'pdfjs-dist',
@@ -27,6 +28,7 @@ export default defineConfig({
       ],
       output: {
         globals: {
+          'react-helmet-async': 'ReactHelmetAsync',
           'jspdf': 'jsPDF',
           'html2canvas': 'html2canvas',
           'pdfjs-dist': 'pdfjsLib',
