@@ -736,28 +736,37 @@ const Dashboard: React.FC = () => {
 
                 <TabsContent value="general" className="mt-6">
                   <div className="space-y-6 bg-white p-8 rounded-xl shadow-sm">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Denumirea Produsului</label>
-                      <input
-                        type="text"
-                        value={selectedProject.tabs.general.projectType}
-                        onChange={(e) => handleInputChange('general', 'projectType', e.target.value)}
-                        className="w-full px-3 py-2 text-base rounded-md border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-                        placeholder="Introduceți denumirea produsului"
-                      />
+                    <div className="grid grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Denumirea Produsului
+                        </label>
+                        <input
+                          type="text"
+                          value={selectedProject.tabs.general.projectType}
+                          onChange={(e) => handleInputChange('general', 'projectType', e.target.value)}
+                          className="w-full px-3 py-2 text-base rounded-md border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                          placeholder="Introduceți denumirea produsului"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Cod Produs
+                        </label>
+                        <input
+                          type="text"
+                          value={selectedProject.tabs.general.clientName}
+                          onChange={(e) => handleInputChange('general', 'clientName', e.target.value)}
+                          className="w-full px-3 py-2 text-base rounded-md border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                          placeholder="Introduceți codul produsului"
+                        />
+                      </div>
                     </div>
+
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Cod Produs</label>
-                      <input
-                        type="text"
-                        value={selectedProject.tabs.general.clientName}
-                        onChange={(e) => handleInputChange('general', 'clientName', e.target.value)}
-                        className="w-full px-3 py-2 text-base rounded-md border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-                        placeholder="Introduceți codul produsului"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Categorie Produs</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Categorie Produs
+                      </label>
                       <select
                         value={selectedProject.tabs.general.projectType}
                         onChange={(e) => handleInputChange('general', 'projectType', e.target.value)}
@@ -770,9 +779,12 @@ const Dashboard: React.FC = () => {
                         <option value="altele">Altele</option>
                       </select>
                     </div>
+
                     <div className="grid grid-cols-2 gap-6">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Data Emiterii</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Data Emiterii
+                        </label>
                         <input
                           type="date"
                           value={formatDate(selectedProject?.tabs.general.startDate)}
@@ -781,7 +793,9 @@ const Dashboard: React.FC = () => {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Data Revizuirii</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Data Revizuirii
+                        </label>
                         <input
                           type="date"
                           value={formatDate(selectedProject?.tabs.general.endDate)}
@@ -790,6 +804,19 @@ const Dashboard: React.FC = () => {
                         />
                       </div>
                     </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Observații
+                      </label>
+                      <textarea
+                        value={selectedProject.tabs.general.notes || ''}
+                        onChange={(e) => handleInputChange('general', 'notes', e.target.value)}
+                        className="w-full px-3 py-2 text-base rounded-md border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors min-h-[100px]"
+                        placeholder="Introduceți observații suplimentare"
+                      />
+                    </div>
+
                     <div className="flex justify-end pt-4">
                       <Button 
                         onClick={() => handleSave('general')}
