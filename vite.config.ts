@@ -30,12 +30,12 @@ export default defineConfig({
   },
   optimizeDeps: {
     include: [
+      'pdf-lib',
       'jspdf',
       'html2canvas',
       'pdfjs-dist',
       'react-to-print',
-      'react-pdf',
-      'pdf-lib'
+      'react-pdf'
     ],
     esbuildOptions: {
       target: 'es2020'
