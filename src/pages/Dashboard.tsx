@@ -12,9 +12,12 @@ import {
   PencilIcon,
   Save,
   Upload,
+  ArrowLeft,
+  FileText,
 } from 'lucide-react'
 import { Project, GeneralTab } from '@/types/Project'
 import * as pdfjsLib from 'pdfjs-dist';
+import { Link } from 'react-router-dom';
 
 import PdfExportButton from "@/components/PdfExportButton";
 
@@ -657,6 +660,36 @@ const Dashboard: React.FC = () => {
     return arr?.join(', ') || 'Not specified';
   };
 
+  // Add this new function to copy a project
+  const handleCopyProject = async (project: Project) => {
+    try {
+      // Create a new project with the same data but with "COPY" appended to the name
+      const copiedProject: Omit<Project, 'id' | 'createdAt'> = {
+        name: `${project.name} COPY`,
+        description: project.description,
+        constructionName: project.constructionName,
+        address: project.address,
+        beneficiary: project.beneficiary,
+        designer: project.designer,
+        builder: project.builder,
+        updatedAt: new Date(),
+        tabs: {
+          general: { ...project.tabs.general },
+          technical: { ...project.tabs.technical },
+          financial: { ...project.tabs.financial },
+          resources: { ...project.tabs.resources }
+        }
+      };
+      
+      await createProject(copiedProject);
+      // Show success message
+      alert('Project copied successfully!');
+    } catch (error) {
+      console.error('Error copying project:', error);
+      alert('Error copying project. Please try again.');
+    }
+  };
+
   return (
     <div className="flex h-screen bg-gray-100">
       {/* Sidebar */}
@@ -673,7 +706,7 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        <div className="p-4">
+        <div className="p-4 space-y-3">
           <button 
             onClick={() => handleOpenModal()}
             className="w-full flex items-center justify-center space-x-2 bg-primary-600 text-white py-2 rounded-md hover:bg-primary-700 transition"
@@ -681,6 +714,14 @@ const Dashboard: React.FC = () => {
             <PlusIcon size={20} />
             <span>Proiect nou</span>
           </button>
+          
+          <Link 
+            to="/formulare"
+            className="w-full flex items-center justify-center space-x-2 bg-gray-200 text-gray-700 py-2 rounded-md hover:bg-gray-300 transition"
+          >
+            <FileText size={20} />
+            <span>Formulare</span>
+          </Link>
         </div>
 
         <nav className="mt-4">
@@ -721,9 +762,25 @@ const Dashboard: React.FC = () => {
         <div className="p-6">
           {selectedProject ? (
             <div>
-              <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold text-gray-900">{selectedProject.name}</h1>
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center">
+                  <button 
+                    onClick={() => setSelectedProject(null)}
+                    className="mr-4 p-2 rounded-full hover:bg-gray-200 transition-colors"
+                    title="Back to projects"
+                  >
+                    <ArrowLeft className="text-gray-600" size={20} />
+                  </button>
+                  <h1 className="text-2xl font-bold text-gray-900">{selectedProject.name}</h1>
+                </div>
                 <div className="flex items-center gap-4">
+                  <Link 
+                    to="/formulare"
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors"
+                  >
+                    <FileText size={16} />
+                    <span>Formulare</span>
+                  </Link>
                   <PdfExportButton project={selectedProject} />
                 </div>
               </div>
@@ -984,55 +1041,80 @@ const Dashboard: React.FC = () => {
               </Tabs>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {projects.map(project => (
-                <div 
-                  key={project.id} 
-                  className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition"
+            <div>
+              <div className="flex justify-between items-center mb-6">
+                <h1 className="text-2xl font-bold text-gray-900">Proiectele mele</h1>
+                <Link 
+                  to="/formulare"
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors"
                 >
-                  <div className="p-6">
-                    <div className="flex justify-between items-center mb-4">
-                      <h3 className="text-lg font-semibold text-gray-800">
-                        {project.name}
-                      </h3>
-                      <span className="bg-primary-100 text-primary-800 px-2 py-1 rounded-full text-xs">
-                        Active
-                      </span>
-                    </div>
-                    <p className="text-gray-600 text-sm mb-4">
-                      {project.description || 'No description provided'}
-                    </p>
-                    <div className="flex items-center space-x-4">
-                      <div className="flex items-center space-x-1 text-gray-500">
-                        <FolderIcon size={16} />
-                        <span className="text-xs">
-                          {new Date(project.createdAt).toLocaleDateString()}
+                  <FileText size={16} />
+                  <span>Formulare</span>
+                </Link>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {projects.map(project => (
+                  <div 
+                    key={project.id} 
+                    className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition"
+                  >
+                    <div className="p-6">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-semibold text-gray-800">
+                          {project.name}
+                        </h3>
+                        <span className="bg-primary-100 text-primary-800 px-2 py-1 rounded-full text-xs">
+                          Active
                         </span>
                       </div>
-                      <div className="flex items-center space-x-1 text-gray-500">
-                        <UserIcon size={16} />
-                        <span className="text-xs">0 Members</span>
+                      <p className="text-gray-600 text-sm mb-4">
+                        {project.description || 'No description provided'}
+                      </p>
+                      <div className="flex items-center space-x-4">
+                        <div className="flex items-center space-x-1 text-gray-500">
+                          <FolderIcon size={16} />
+                          <span className="text-xs">
+                            {new Date(project.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <div className="flex items-center space-x-1 text-gray-500">
+                          <UserIcon size={16} />
+                          <span className="text-xs">0 Members</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="border-t p-4 flex justify-between">
+                      <button 
+                        onClick={() => setSelectedProject(project)}
+                        className="text-gray-600 hover:text-primary-600 text-sm flex items-center space-x-1"
+                      >
+                        <EyeIcon size={16} />
+                        <span>View Project</span>
+                      </button>
+                      <div className="flex space-x-2">
+                        <button 
+                          onClick={() => handleOpenModal(project)}
+                          className="text-gray-600 hover:text-primary-600 text-sm flex items-center space-x-1"
+                        >
+                          <PencilIcon size={16} />
+                          <span>Edit</span>
+                        </button>
+                        <button 
+                          onClick={() => handleCopyProject(project)}
+                          className="text-gray-600 hover:text-primary-600 text-sm flex items-center space-x-1"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                          </svg>
+                          <span>Copy</span>
+                        </button>
                       </div>
                     </div>
                   </div>
-                  <div className="border-t p-4 flex justify-between">
-                    <button 
-                      onClick={() => setSelectedProject(project)}
-                      className="text-gray-600 hover:text-primary-600 text-sm flex items-center space-x-1"
-                    >
-                      <EyeIcon size={16} />
-                      <span>View Project</span>
-                    </button>
-                    <button 
-                      onClick={() => handleOpenModal(project)}
-                      className="text-gray-600 hover:text-primary-600 text-sm flex items-center space-x-1"
-                    >
-                      <PencilIcon size={16} />
-                      <span>Edit</span>
-                    </button>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           )}
         </div>

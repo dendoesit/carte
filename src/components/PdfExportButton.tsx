@@ -497,7 +497,7 @@ export default function PdfExportButton({ project }: PdfExportButtonProps) {
       ) : (
         <>
           <Eye className="h-4 w-4" />
-          <span>Vizualizare PDF</span>
+          <span>Descarcare PDF</span>
         </>
       )}
     </Button>

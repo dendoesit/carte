@@ -6,6 +6,7 @@ import Landing from './pages/Landing'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
 import Dashboard from './pages/Dashboard'
+import Formulare from './pages/Formulare'
 import Terms from './pages/Terms'
 import Privacy from './pages/Privacy'
 import Documentation from './pages/Documentation'
@@ -20,6 +21,7 @@ const App: React.FC = () => {
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/formulare" element={<Formulare />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/documentation" element={<Documentation />} />
