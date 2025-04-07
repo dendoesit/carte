@@ -21,7 +21,6 @@ export default defineConfig({
       external: [
         'jspdf',
         'html2canvas',
-        'pdfjs-dist',
         'react-to-print',
         'pdf-lib'
       ],
@@ -29,7 +28,6 @@ export default defineConfig({
         globals: {
           'jspdf': 'jsPDF',
           'html2canvas': 'html2canvas',
-          'pdfjs-dist': 'pdfjsLib',
           'react-to-print': 'ReactToPrint'
         },
       },
