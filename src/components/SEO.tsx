@@ -1,4 +1,3 @@
-import { Helmet } from 'react-helmet-async';
 
 interface SEOProps {
   title?: string;
@@ -18,7 +17,7 @@ export default function SEO({
   const siteTitle = 'DocuTech';
 
   return (
-    <Helmet>
+    <>
       {/* Basic metadata */}
       <title>{title}</title>
       <meta name="description" content={description} />
@@ -54,6 +53,6 @@ export default function SEO({
 
       {/* Canonical URL */}
       <link rel="canonical" href={url} />
-    </Helmet>
+      </>
   );
 } 
