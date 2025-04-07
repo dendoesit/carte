@@ -28,6 +28,8 @@ const Formulare: React.FC = () => {
     {
       title: 'Formulare Diriginti de santier',
       forms: [
+        { name: 'Modelul cererii de autorizare a dirigintilor de santier', url: '/forms/cerere_de_autorizare.doc', isLocal: false },
+
         { name: 'Declaratie pe propria raspundere', url: 'https://isc.gov.ro/files/2015/Formulare/declaratie%20pe%20propia%20raspundere.pdf', isLocal: false },
         { name: 'Model cerere - tip pentru depunerea registrului de evidenţă a activităţii de diriginte de şantier', url: 'https://isc.gov.ro/files/2016/Autorizari/Cerere.pdf', isLocal: false },
         { name: 'Model de registru de evidenţă a activităţii de diriginte de şantier', url: 'https://isc.gov.ro/files/2016/Autorizari/Registru.pdf', isLocal: false },
@@ -50,10 +52,15 @@ const Formulare: React.FC = () => {
     if (form.isLocal) {
       const link = document.createElement('a');
       link.href = form.url;
-      link.download = form.name + '.pdf';
+      
+      // Extract filename from the URL to use the correct extension
+      const filename = form.url.substring(form.url.lastIndexOf('/') + 1);
+      link.download = filename || form.name; // Use extracted filename, fallback to form name
+
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      URL.revokeObjectURL(link.href); // Clean up the object URL
     } else {
       window.open(form.url, '_blank');
     }
