@@ -15,10 +15,14 @@ import {
 } from 'lucide-react'
 import { Project, GeneralTab } from '@/types/Project'
 import * as pdfjsLib from 'pdfjs-dist';
+
 import PdfExportButton from "@/components/PdfExportButton";
 
 // Set worker source (add this near the top of the file)
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+const workerUrl = import.meta.env.DEV
+  ? `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js` // CDN for dev
+  : `/pdf.worker.min.js`; // Local path for production (when it's in the public directory)
+pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
 
 const Dashboard: React.FC = () => {
   const { projects, createProject, updateProject } = useProjects()
