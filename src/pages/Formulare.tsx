@@ -28,8 +28,7 @@ const Formulare: React.FC = () => {
     {
       title: 'Formulare Diriginti de santier',
       forms: [
-        { name: 'Modelul cererii de autorizare a dirigintilor de santier', url: '/forms/cerere_de_autorizare.doc', isLocal: false },
-
+        { name: 'Modelul cererii de autorizare a dirigintilor de santier', url: '/forms/cerere_de_autorizare.doc', isLocal: true },
         { name: 'Declaratie pe propria raspundere', url: 'https://isc.gov.ro/files/2015/Formulare/declaratie%20pe%20propia%20raspundere.pdf', isLocal: false },
         { name: 'Model cerere - tip pentru depunerea registrului de evidenţă a activităţii de diriginte de şantier', url: 'https://isc.gov.ro/files/2016/Autorizari/Cerere.pdf', isLocal: false },
         { name: 'Model de registru de evidenţă a activităţii de diriginte de şantier', url: 'https://isc.gov.ro/files/2016/Autorizari/Registru.pdf', isLocal: false },
