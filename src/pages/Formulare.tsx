@@ -28,10 +28,10 @@ const Formulare: React.FC = () => {
     {
       title: 'Formulare Diriginti de santier',
       forms: [
-        { name: 'Declaratie pe propria raspundere', url: 'https://isc.gov.ro/files/2015/Formulare/declaratie%20pe%20propia%20raspundere.pdf' },
-        { name: 'Model cerere - tip pentru depunerea registrului de evidenţă a activităţii de diriginte de şantier', url: 'https://isc.gov.ro/files/2016/Autorizari/Cerere.pdf' },
-        { name: 'Model de registru de evidenţă a activităţii de diriginte de şantier', url: 'https://isc.gov.ro/files/2016/Autorizari/Registru.pdf' },
-        { name: 'Registru de evidenţă a activităţii de diriginte de şantier', url: '/forms/Model_registru_diriginte.doc' },
+        { name: 'Declaratie pe propria raspundere', url: 'https://isc.gov.ro/files/2015/Formulare/declaratie%20pe%20propia%20raspundere.pdf', isLocal: false },
+        { name: 'Model cerere - tip pentru depunerea registrului de evidenţă a activităţii de diriginte de şantier', url: 'https://isc.gov.ro/files/2016/Autorizari/Cerere.pdf', isLocal: false },
+        { name: 'Model de registru de evidenţă a activităţii de diriginte de şantier', url: 'https://isc.gov.ro/files/2016/Autorizari/Registru.pdf', isLocal: false },
+        { name: 'Registru de evidenţă a activităţii de diriginte de şantier', url: '/forms/Model_registru_diriginte.doc', isLocal: true },
       ]
     },
     {
