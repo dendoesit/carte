@@ -18,18 +18,9 @@ export default defineConfig({
     chunkSizeWarningLimit: 1000,
     assetsInlineLimit: 0,
     rollupOptions: {
-      external: [
-        'jspdf',
-        'html2canvas',
-        'react-to-print',
-        'pdf-lib'
-      ],
+      external: [],
       output: {
-        globals: {
-          'jspdf': 'jsPDF',
-          'html2canvas': 'html2canvas',
-          'react-to-print': 'ReactToPrint'
-        },
+        globals: {}
       },
     },
     commonjsOptions: {
@@ -43,7 +34,8 @@ export default defineConfig({
       'html2canvas',
       'pdfjs-dist',
       'react-to-print',
-      'react-pdf'
+      'react-pdf',
+      'pdf-lib'
     ],
     esbuildOptions: {
       target: 'es2020'

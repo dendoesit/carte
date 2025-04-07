@@ -1,7 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { Eye } from "lucide-react";
 import type { Project } from "@/types/Project";
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import * as pdfLib from 'pdf-lib/dist/pdf-lib.esm.js';
+import { PDFDocument } from 'pdf-lib/dist/pdf-lib.esm.js';
+import { StandardFonts, rgb } from 'pdf-lib';
 import { useState } from "react";
 
 interface PdfExportButtonProps {
