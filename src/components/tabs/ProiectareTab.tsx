@@ -1,5 +1,5 @@
 import React, { useRef, DragEvent, ChangeEvent } from 'react';
-import { Project } from '@/types/Project';
+import { Project, ChecklistItem, UploadedFile } from '@/types/Project';
 import { Button } from "@/components/ui/button"; // Adjust path
 import { GripVertical, FileText, X as XIcon, Upload, PlusCircle, Save, Trash2 } from 'lucide-react'; // Adjust path
 import type { UseProjectTabsReturn } from '@/hooks/useProjectTabs'; // Use 'type' import if only used as type
@@ -78,6 +78,12 @@ export const ProiectareTab: React.FC<ProiectareTabProps> = ({ project, tabHandle
                 const isBeingDragged = draggedItemIndex === index;
                 const isDragTarget = dragOverItemIndex !== null && dragOverItemIndex === index && !isBeingDragged;
 
+                // --- Add console log here ---
+                if (item.file) {
+                    console.log(`Item ${index} file URL for link:`, item.file.url);
+                }
+                // --- End console log ---
+
                 return (
                     <div 
                         key={item.id} 
@@ -122,7 +128,15 @@ export const ProiectareTab: React.FC<ProiectareTabProps> = ({ project, tabHandle
                                       <FileText className="w-4 h-4 text-primary-600 flex-shrink-0" />
                                       <span className="truncate">{item.file.name}</span>
                                   </div>
-                                  <a href={item.file.url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary-600 hover:text-primary-800 font-medium px-2 py-1 rounded hover:bg-primary-50">Vizualizează</a>
+                                  <a
+                                      href={item.file.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-xs text-primary-600 hover:text-primary-800 font-medium px-2 py-1 rounded hover:bg-primary-50"
+                                      title="Vizualizează PDF"
+                                  >
+                                      Vizualizează
+                                  </a>
                                   <button onClick={() => handleRemoveFile(tabKey, index)} className="text-xs text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50"><XIcon size={14}/></button>
                                 </>
                            ) : (

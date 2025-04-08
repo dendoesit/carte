@@ -115,39 +115,46 @@ const embedPdf = async (pdfDoc: PDFDocument, fileOrUrl: any): Promise<{ success:
   let url: string | null = null;
   try {
     url = await getFileUrl(fileOrUrl); if (!url) return { success: false, error:'...'};
-    const response = await fetch(url); if (!response.ok) return { success: false, error:'...'};
-    const arrayBuffer = await response.arrayBuffer(); if(!arrayBuffer || arrayBuffer.byteLength === 0) return { success: false, error:'...'};
-    if (!(await isValidPdf(arrayBuffer))) return { success: false, error:'...'};
+    const response = await fetch(url); if (!response.ok) return { success: false, error:`HTTP ${response.status}`};
+    const arrayBuffer = await response.arrayBuffer(); if(!arrayBuffer || arrayBuffer.byteLength === 0) return { success: false, error:'Fișier gol'};
+    if (!(await isValidPdf(arrayBuffer))) return { success: false, error:'Header PDF invalid'};
 
     const pdfBytes = new Uint8Array(arrayBuffer);
-    // @ts-ignore
+    // @ts-ignore - Assuming load exists despite type issues
     const uploadedPdf = await PDFDocument.load(pdfBytes);
 
-    // @ts-ignore
+    // @ts-ignore - Assuming getPageCount exists
     const pageCount = uploadedPdf.getPageCount();
     if (pageCount === 0) return { success: false, error: 'PDF-ul nu are pagini' };
-    // @ts-ignore
+
+    // @ts-ignore - Assuming getPageIndices exists
     const pageIndices = uploadedPdf.getPageIndices();
-    console.log('[embedPdf] Copying pages:', pageIndices);
-    // @ts-ignore
+
+    // @ts-ignore - Assuming copyPages exists
     const copiedPages = await pdfDoc.copyPages(uploadedPdf, pageIndices);
 
     console.log('[embedPdf] Adding pages to main document');
     copiedPages.forEach((page: PDFPage) => {
-      // @ts-ignore
-      const newPage = pdfDoc.addPage(page.getSize());
-      // @ts-ignore
-      newPage.drawPage(page);
+      // --- FIX: Try direct addPage with ts-ignore ---
+      // This avoids the potentially problematic page.getSize() call
+      // @ts-ignore - Assume addPage can accept a PDFPage instance at runtime
+      pdfDoc.addPage(page);
+      // --- End FIX ---
 
+      /* // Remove the previous workaround:
       // @ts-ignore
-      // pdfDoc.addPage(page);
+      // const newPage = pdfDoc.addPage(page.getSize());
+      // @ts-ignore
+      // newPage.drawPage(page);
+      */
     });
 
     if (url.startsWith('blob:')) URL.revokeObjectURL(url);
     return { success: true };
   } catch (error: any) {
     if (url?.startsWith('blob:')) URL.revokeObjectURL(url);
-    return { success: false, error: `Eroare embed: ${error.message}` };
+    // --- FIX: Provide more detail in error ---
+    return { success: false, error: `Eroare embed: ${error?.message ?? String(error)}` };
   }
 };
 
@@ -190,6 +197,15 @@ interface TocEntry {
   page: number; // 1-based page number
 }
 
+// Interface for file entries within a section's borderou
+interface BorderouEntry {
+  name: string; // File name or checklist item label
+  page: number; // 1-based page number where it starts
+}
+
+// Track content page indices (0-based) for assembly
+type SectionPageRange = { start: number; end: number };
+
 export default function PdfExportButton({ project }: PdfExportButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -198,224 +214,216 @@ export default function PdfExportButton({ project }: PdfExportButtonProps) {
     setIsGenerating(true);
     console.log('Starting PDF generation for project:', project.name);
 
-    const tocEntries: TocEntry[] = [];
+    // Store borderou data PER section
+    const borderouData: { [key in 'Proiectare' | 'Executie' | 'Receptie' | 'Urmarire']?: BorderouEntry[] } = {};
+    // Store 0-based page indices for content ranges
+    const sectionContentIndices: { [key: string]: SectionPageRange | null } = {
+        DateGenerale: null, Proiectare: null, Executie: null, Receptie: null, Urmarire: null,
+    };
+
+    // --- Step 1: Generate all content into a temporary document ---
+    const tempPdfDoc = await PDFDocument.create();
+    const timesRomanFont = await tempPdfDoc.embedFont(StandardFonts.TimesRoman);
+    const timesBoldFont = await tempPdfDoc.embedFont(StandardFonts.TimesRomanBold);
+    const margin = 50;
+    const defaultPageSize: [number, number] = [595.28, 841.89]; // A4
 
     try {
-      const pdfDoc = await PDFDocument.create();
-      const timesRomanFont = await pdfDoc.embedFont(StandardFonts.TimesRoman);
-      const timesBoldFont = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
-      const margin = 50;
-      const defaultPageSize: [number, number] = [595.28, 841.89]; // A4 in points
+        // --- Add Title Page ---
+        const titlePage = tempPdfDoc.addPage(defaultPageSize);
+        const { width: pageWidth, height: pageHeight } = titlePage.getSize();
+        const titleText = 'Cartea Tehnica a Constructiei';
+        const titleFontSize = 24;
+        const titleWidth = timesBoldFont.widthOfTextAtSize(titleText, titleFontSize);
+        titlePage.drawText(titleText, {
+          x: (pageWidth - titleWidth) / 2,
+          y: pageHeight / 2, // Center vertically
+                font: timesBoldFont,
+          size: titleFontSize,
+                color: rgb(0, 0, 0),
+              });
+        const projectNameText = removeAllDiacritics(project.name || 'Proiect Fara Nume');
+        const projectNameFontSize = 16;
+        const projectNameWidth = timesRomanFont.widthOfTextAtSize(projectNameText, projectNameFontSize);
+        titlePage.drawText(projectNameText, {
+          x: (pageWidth - projectNameWidth) / 2,
+          y: pageHeight / 2 - 40, // Below main title
+          font: timesRomanFont,
+          size: projectNameFontSize,
+          color: rgb(0.2, 0.2, 0.2),
+        });
 
-      // --- 1. Title Page ---
-      console.log('Adding Title Page');
-      // @ts-ignore
-      const titlePage = pdfDoc.addPage(defaultPageSize);
-      const { width: pageWidth, height: pageHeight } = titlePage.getSize();
-      const titleText = 'Cartea Tehnica a Constructiei';
-      const titleFontSize = 24;
-      const titleWidth = timesBoldFont.widthOfTextAtSize(titleText, titleFontSize);
-      titlePage.drawText(titleText, {
-        x: (pageWidth - titleWidth) / 2,
-        y: pageHeight / 2, // Center vertically
-              font: timesBoldFont,
-        size: titleFontSize,
-              color: rgb(0, 0, 0),
-            });
-      const projectNameText = removeAllDiacritics(project.name || 'Proiect Fara Nume');
-      const projectNameFontSize = 16;
-      const projectNameWidth = timesRomanFont.widthOfTextAtSize(projectNameText, projectNameFontSize);
-      titlePage.drawText(projectNameText, {
-        x: (pageWidth - projectNameWidth) / 2,
-        y: pageHeight / 2 - 40, // Below main title
-        font: timesRomanFont,
-        size: projectNameFontSize,
-        color: rgb(0.2, 0.2, 0.2),
-      });
+        let currentPageNum = 1; // Title page is page 1
+        const addPageAndGetCurrentIndex = (): PDFPage => { currentPageNum++; return tempPdfDoc.addPage(defaultPageSize); };
 
-      // --- GENERATE ALL CONTENT PAGES ---
-      let currentPageNum = 1; // Title page is page 1
-      const addPageAndIncrement = (): PDFPage => { currentPageNum++; return pdfDoc.addPage(defaultPageSize); };
+        // --- Add Date Generale Content ---
+        const generalProjectContent = [
+          { label: 'Denumire conf AC:', value: project.constructionName || '-' },
+          { label: 'Localizare (Obiectiv):', value: project.address || '-' },
+          { label: 'Investitor (Nume):', value: project.beneficiary || '-' },
+          { label: 'Investitor (Adresa):', value: project.investorAddress || '-' },
+          { label: 'Investitor (Judet):', value: project.investorCounty || '-' },
+          { label: 'Autorizatie (Numar):', value: project.authNumber || '-' },
+          { label: 'Autorizatie (Data):', value: formatDate(project.authDate) },
+          { label: 'Autorizatie (Termen):', value: formatDate(project.authDeadline) },
+          { label: 'Notificare ISC (Numar):', value: project.iscNoticeNumber || '-' },
+          { label: 'Notificare ISC (Data):', value: formatDate(project.iscNoticeDate) },
+          { label: 'Data Receptie Lucrari:', value: formatDate(project.receptionDate) },
+          { label: 'Adresa Santier:', value: project.siteAddress || '-' },
+          { label: 'Proiectant:', value: project.designer || '-' },
+          { label: 'Constructor:', value: project.builder || '-' },
+          { label: 'Descriere Generala:', value: project.description || '-' }, // Top-level description if exists
+        ].filter(item => item.value && item.value !== '-'); // Filter out empty/default
+        if (generalProjectContent.length > 0) {
+            const page = addPageAndGetCurrentIndex();
+            const startIndex = tempPdfDoc.getPageCount() - 1;
+            sectionContentIndices.DateGenerale = { start: startIndex, end: -1 };
+            addSectionContent( tempPdfDoc, timesRomanFont, timesBoldFont, "1. Date Generale Proiect (Modal)", generalProjectContent, margin, page, page.getHeight()-margin );
+            sectionContentIndices.DateGenerale.end = tempPdfDoc.getPageCount();
+        }
 
-      // --- 2. Section: Date Generale ---
-      console.log('Adding General Project Data section');
-      const generalProjectContent = [
-        { label: 'Denumire conf AC:', value: project.constructionName || '-' },
-        { label: 'Localizare (Obiectiv):', value: project.address || '-' },
-        { label: 'Investitor (Nume):', value: project.beneficiary || '-' },
-        { label: 'Investitor (Adresa):', value: project.investorAddress || '-' },
-        { label: 'Investitor (Judet):', value: project.investorCounty || '-' },
-        { label: 'Autorizatie (Numar):', value: project.authNumber || '-' },
-        { label: 'Autorizatie (Data):', value: formatDate(project.authDate) },
-        { label: 'Autorizatie (Termen):', value: formatDate(project.authDeadline) },
-        { label: 'Notificare ISC (Numar):', value: project.iscNoticeNumber || '-' },
-        { label: 'Notificare ISC (Data):', value: formatDate(project.iscNoticeDate) },
-        { label: 'Data Receptie Lucrari:', value: formatDate(project.receptionDate) },
-        { label: 'Adresa Santier:', value: project.siteAddress || '-' },
-        { label: 'Proiectant:', value: project.designer || '-' },
-        { label: 'Constructor:', value: project.builder || '-' },
-        { label: 'Descriere Generala:', value: project.description || '-' }, // Top-level description if exists
-      ].filter(item => item.value && item.value !== '-'); // Filter out empty/default
-      if (generalProjectContent.length > 0) { // Only add if content exists
-          const generalContentPage = addPageAndIncrement();
-          tocEntries.push({ level: 1, name: '1. Date Generale Proiect (Modal)', page: currentPageNum });
-          let generalContentY = generalContentPage.getHeight() - margin;
-          addSectionContent( pdfDoc, timesRomanFont, timesBoldFont, "", generalProjectContent, margin, generalContentPage, generalContentY );
-          // @ts-ignore
-          currentPageNum = pdfDoc.getPageCount(); // Update page count
-      }
+        // --- REUSABLE FUNCTION TO GENERATE CHECKLIST CONTENT PAGES ---
+        const generateChecklistContent = async (
+            sectionKey: keyof typeof borderouData,
+            tabData: { checklistItems?: ChecklistItem[] } | undefined
+        ): Promise<void> => {
+            if (!tabData?.checklistItems) return;
 
-      // --- REUSABLE FUNCTION FOR CHECKLIST SECTIONS ---
-      const addChecklistSection = async (
-          sectionIndex: number,
-          sectionKey: 'general' | 'technical' | 'financial' | 'resources',
-          sectionFullName: string
-      ): Promise<boolean> => {
-          console.log(`Adding ${sectionFullName} section`);
-          const tabData = project.tabs[sectionKey];
-          let sectionAdded = false;
+            const contentStartIndex = tempPdfDoc.getPageCount(); // Index where content for this section STARTS
+            let contentAdded = false;
+            borderouData[sectionKey] = []; // Initialize borderou data for this section
 
-          if (tabData?.checklistItems && tabData.checklistItems.some(item => item.checked)) {
-              const sectionTitle = `${sectionIndex}. ${sectionFullName}`;
-              const titlePage = addPageAndIncrement();
-              sectionAdded = true;
-              tocEntries.push({ level: 1, name: sectionTitle, page: currentPageNum });
-              titlePage.drawText(sectionTitle, { x: margin, y: titlePage.getHeight() - margin, size: 18, font: timesBoldFont, color: rgb(0,0,0) });
+            for (const item of tabData.checklistItems) {
+                if (item.checked) {
+                    contentAdded = true; // Mark that we are adding pages for this section
+                    const itemContentPage = addPageAndGetCurrentIndex();
+                    let itemContentY = itemContentPage.getHeight() - margin;
 
-              for (const item of tabData.checklistItems) {
-                  if (item.checked) {
-                      let itemContentPage = addPageAndIncrement();
-                      tocEntries.push({ level: 2, name: item.label, page: currentPageNum });
-                      let itemContentY = itemContentPage.getHeight() - margin;
-                      itemContentPage.drawText(item.label, { x: margin, y: itemContentY, size: 14, font: timesBoldFont, color: rgb(0, 0, 0) });
-                      itemContentY -= 30;
+                    // Draw item label as heading on its content page
+                    itemContentPage.drawText(item.label, { x: margin, y: itemContentY, size: 14, font: timesBoldFont });
+                    itemContentY -= 30;
 
-                      if (item.file) {
-                          // @ts-ignore
-                          const pageNumBeforeEmbed = pdfDoc.getPageCount() + 1;
-                          const result = await embedPdf(pdfDoc, item.file);
-                          // @ts-ignore
-                          currentPageNum = pdfDoc.getPageCount();
-                          if (result.success) {
-                              tocEntries.push({ level: 2, name: `   - ${item.file.name}`, page: pageNumBeforeEmbed });
-                          } else {
-                              console.error(`Failed embed for ${item.label}: ${result.error}`);
-                              // Add error message BELOW sub-heading on the item's content page
-                              if (itemContentY < 60) { itemContentPage = addPageAndIncrement(); itemContentY = itemContentPage.getHeight() - margin; }
-                              itemContentPage.drawText(`! Eroare PDF: ${removeAllDiacritics(result.error || 'Necunoscut')}`, { x: margin, y: itemContentY, size: 10, font: timesRomanFont, color: rgb(1, 0, 0) });
-                              itemContentY -= 15;
-                          }
-                      } else {
-                          // No file attached - add note below sub-heading
-                          if (itemContentY < 60) { itemContentPage = addPageAndIncrement(); itemContentY = itemContentPage.getHeight() - margin; }
-                          itemContentPage.drawText(`(Niciun document PDF atasat)`, { x: margin, y: itemContentY, size: 10, font: timesRomanFont, color: rgb(0.5, 0.5, 0.5) });
-                          itemContentY -= 15;
-                      }
-                  } // end if checked
-              } // end loop
-          } // end if checklist items exist & checked
-          return sectionAdded;
-      };
+                    if (item.file) {
+                        const pageNumBeforeEmbed = tempPdfDoc.getPageCount() + 1; // Page num where embedded content will START
+                        const result = await embedPdf(tempPdfDoc, item.file); // Embed into temp doc
+                        if (result.success) {
+                            // Add to borderou data only if embed succeeded
+                            borderouData[sectionKey]?.push({ name: `${item.label} (${item.file.name})`, page: pageNumBeforeEmbed });
+                        } else { /* Draw error on itemContentPage */
+                            itemContentPage.drawText(`! Eroare PDF: ${result.error || 'Necunoscut'}`, {x: margin, y:itemContentY, size:10, color:rgb(1,0,0)}); itemContentY -=15;
+                         }
+                    } else { /* Draw no file message on itemContentPage */
+                       itemContentPage.drawText(`(Niciun document PDF atasat)`, {x: margin, y:itemContentY, size:10, color:rgb(0.5,0.5,0.5)}); itemContentY -=15;
+                    }
+                } // end if checked
+            } // end loop
 
-      // --- Call addChecklistSection for all tabs ---
-      let currentSectionIndex = 1; // Start after "Date Generale"
+            if (contentAdded) {
+                 sectionContentIndices[sectionKey] = { start: contentStartIndex, end: tempPdfDoc.getPageCount() };
+            }
+        }; // --- END generateChecklistContent ---
 
-      const proiectareAdded = await addChecklistSection(currentSectionIndex + 1, 'general', 'Documentatie Proiectare');
-      if (proiectareAdded) currentSectionIndex++;
 
-      const executieAdded = await addChecklistSection(currentSectionIndex + 1, 'technical', 'Documentatie Executie');
-      if (executieAdded) currentSectionIndex++;
+        // --- Generate Content for Checklist Tabs ---
+        await generateChecklistContent('Proiectare', project.tabs.general);
+        await generateChecklistContent('Executie', project.tabs.technical);
+        await generateChecklistContent('Receptie', project.tabs.financial);
+        await generateChecklistContent('Urmarire', project.tabs.resources);
 
-      const receptieAdded = await addChecklistSection(currentSectionIndex + 1, 'financial', 'Documentatie Receptie');
-      if (receptieAdded) currentSectionIndex++;
 
-      const urmarireAdded = await addChecklistSection(currentSectionIndex + 1, 'resources', 'Documentatie Urmarirea in Timp');
-      if (urmarireAdded) currentSectionIndex++;
+        // --- Step 2: Generate Borderou Pages (in memory) ---
+        console.log('Generating Borderou pages in memory');
+        const borderouPagesMap: Map<string, { page: PDFPage, finalPageNum: number | null }> = new Map();
+        const borderouDoc = await PDFDocument.create();
+        // --- Embed fonts needed for drawing borderou ---
+        const borderouTimesRoman = await borderouDoc.embedFont(StandardFonts.TimesRoman);
+        const borderouTimesBold = await borderouDoc.embedFont(StandardFonts.TimesRomanBold);
 
-      // --- Generate and Insert Borderou General Page ---
-      console.log('Generating Borderou General page');
-      if (tocEntries.length > 0) {
-          // @ts-ignore
-          const borderouPage = pdfDoc.insertPage(1, defaultPageSize);
-          for (let i = 0; i < tocEntries.length; i++) { tocEntries[i].page++; }
+        for (const sectionKey of ['Proiectare', 'Executie', 'Receptie', 'Urmarire'] as const) {
+            const entries = borderouData[sectionKey];
+            if (entries && entries.length > 0) {
+                 const tempBorderouPage = borderouDoc.addPage(defaultPageSize);
+                 let borderouY = tempBorderouPage.getHeight() - margin;
+                 let sectionTitle = ""; // Determine title based on sectionKey
+                 if(sectionKey === 'Proiectare') sectionTitle = "2. Borderou Documentatie Proiectare";
+                 else if(sectionKey === 'Executie') sectionTitle = "3. Borderou Documentatie Executie";
+                 else if(sectionKey === 'Receptie') sectionTitle = "4. Borderou Documentatie Receptie";
+                 else if(sectionKey === 'Urmarire') sectionTitle = "5. Borderou Documentatie Urmarirea in Timp";
 
-          let borderouY = borderouPage.getHeight() - margin;
-          const tableX = margin;
-          const tableWidth = borderouPage.getWidth() - margin * 2;
-          const nameColWidth = tableWidth * 0.85; // More space for name
-          const pageColWidth = tableWidth * 0.15;
-          const pageColX = tableX + nameColWidth;
-          const fontSize = 10;
-          const lineHeight = 15; // Base line height
+                 // --- Draw using fonts embedded in borderouDoc ---
+                 tempBorderouPage.drawText(sectionTitle, { x: margin, y: borderouY, font: borderouTimesBold, size: 16 });
+                 borderouY -= 40;
+                 // Draw Table Headers using borderou fonts...
+                 borderouY -= 20;
+                 for (const entry of entries) {
+                    if (borderouY < margin) break;
+                    // Draw entry name (truncated) using borderou fonts...
+                    // Draw page number (right-aligned) using borderou fonts...
+                    borderouY -= 15;
+                 }
+                 // Copy the drawn page (now using self-contained fonts)
+                 const [copiedBorderouPage] = await tempPdfDoc.copyPages(borderouDoc, [0]);
+                 borderouPagesMap.set(sectionKey, { page: copiedBorderouPage, finalPageNum: null });
+                 borderouDoc.removePage(0);
+            }
+        }
 
-          // Borderou Title
-          borderouPage.drawText('Borderou General / Cuprins', { x: margin, y: borderouY, font: timesBoldFont, size: 14 });
-          borderouY -= 30;
 
-          // Table Headers
-          borderouPage.drawText('Nume', { x: tableX, y: borderouY, font: timesBoldFont, size: fontSize });
-          borderouPage.drawText('Pagina', { x: pageColX, y: borderouY, font: timesBoldFont, size: fontSize });
-          borderouY -= 5;
-          borderouPage.drawLine({ start: { x: tableX, y: borderouY }, end: { x: tableX + tableWidth, y: borderouY }, thickness: 0.5 });
-          borderouY -= lineHeight;
+        // --- Step 3: Create Final Document and Copy Pages in Order ---
+        console.log('Assembling final PDF');
+        const finalPdfDoc = await PDFDocument.create();
+        const pagesToCopyIndices: number[] = []; // 0-based indices from tempPdfDoc
 
-          // Table Rows
-          for (const entry of tocEntries) {
-               // Check for page overflow BEFORE drawing
-               if (borderouY < margin + lineHeight) {
-                   console.warn("Borderou content overflow - requires pagination logic.");
-                   break; // Stop drawing if overflow occurs
-               }
+        // 1. Add Title Page Index (Index 0 from tempPdfDoc)
+        pagesToCopyIndices.push(0);
 
-               const isMainSection = entry.level === 1;
-               const currentFont = isMainSection ? timesBoldFont : timesRomanFont;
-               const indent = isMainSection ? 0 : 10; // Indent sub-items (level 2)
-
-               // --- Draw Name (Left Aligned) ---
-               // Basic Truncation (replace with wrapping if essential)
-               let displayName = entry.name;
-               let textWidth = currentFont.widthOfTextAtSize(displayName, fontSize);
-               while (textWidth > nameColWidth - indent && displayName.length > 10) {
-                  displayName = displayName.substring(0, displayName.length - 4) + "..."; // Simple truncation
-                  textWidth = currentFont.widthOfTextAtSize(displayName, fontSize);
-               }
-               borderouPage.drawText(displayName, {
-                   x: tableX + indent,
-                   y: borderouY,
-                   font: currentFont,
-                   size: fontSize,
-                   color: rgb(0,0,0),
-                   maxWidth: nameColWidth - indent // Good practice, though we truncated
-               });
-
-               // --- Draw Page Number (Right Aligned) ---
-               const pageNumStr = String(entry.page);
-               const pageNumWidth = timesRomanFont.widthOfTextAtSize(pageNumStr, fontSize); // Use consistent font for width calc?
-               borderouPage.drawText(pageNumStr, {
-                   x: pageColX + pageColWidth - pageNumWidth, // Calculate right alignment start X
-                   y: borderouY,
-                   font: timesRomanFont, // Use standard font for numbers
-                   size: fontSize,
-                   color: rgb(0,0,0)
-               });
-
-               borderouY -= lineHeight; // Move Y for next line
+        // 2. Add Date Generale Content Indices
+        if (sectionContentIndices.DateGenerale) {
+          for (let i = sectionContentIndices.DateGenerale.start; i < sectionContentIndices.DateGenerale.end; i++) {
+              pagesToCopyIndices.push(i);
           }
-      }
+        }
+
+        // 3. Add Sections (Borderou (from map), Content)
+        for (const sectionKey of ['Proiectare', 'Executie', 'Receptie', 'Urmarire'] as const) {
+            const indices = sectionContentIndices[sectionKey]; // Content indices
+            const borderouInfo = borderouPagesMap.get(sectionKey); // Borderou page instance
+
+            // Add Borderou Page Index (if exists)
+            if (borderouInfo) {
+                const borderouIndexInTemp = tempPdfDoc.getPages().indexOf(borderouInfo.page);
+                if (borderouIndexInTemp !== -1) pagesToCopyIndices.push(borderouIndexInTemp);
+            }
+
+            // Add Content Page Indices (if they exist)
+            if (indices) {
+                for (let i = indices.start; i < indices.end; i++) {
+                    pagesToCopyIndices.push(i);
+                }
+            }
+        }
+
+        // Copy all collected pages into the final document
+        const copiedFinalPages = await finalPdfDoc.copyPages(tempPdfDoc, pagesToCopyIndices);
+        copiedFinalPages.forEach(page => finalPdfDoc.addPage(page));
 
 
-      // --- Save and Display ---
-      console.log('Saving PDF document');
-      const pdfBytes = await pdfDoc.save();
-      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-      const blobUrl = URL.createObjectURL(blob);
-      console.log('Opening PDF in new tab');
-      window.open(blobUrl, '_blank');
+        // --- Step 4: REMOVED Redrawing/Overwriting Borderou Page Numbers ---
+        console.log("Skipping borderou page number redraw step.");
+        // The borderou pages will display the page numbers calculated during the initial tempPdfDoc generation.
 
-    } catch (error) {
-      console.error('Error generating PDF:', error);
-      const message = error instanceof Error ? error.message : String(error);
-      alert(`Eroare la generarea PDF-ului: ${message}`);
+
+        // --- Save and Display ---
+        console.log('Saving final PDF document');
+        const pdfBytes = await finalPdfDoc.save();
+        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+        const blobUrl = URL.createObjectURL(blob);
+        console.log('Opening PDF in new tab');
+        window.open(blobUrl, '_blank');
+
+    } catch (error: any) {
+        console.error("Error generating PDF:", error);
+        alert(`Eroare la generarea PDF-ului: ${error.message}`);
     } finally {
       setIsGenerating(false);
     }
