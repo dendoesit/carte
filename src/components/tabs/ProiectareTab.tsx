@@ -1,5 +1,5 @@
 import React, { useRef, DragEvent, ChangeEvent } from 'react';
-import { Project, ChecklistItem, UploadedFile } from '@/types/Project';
+import { Project } from '@/types/Project';
 import { Button } from "@/components/ui/button"; // Adjust path
 import { GripVertical, FileText, X as XIcon, Upload, PlusCircle, Save, Trash2 } from 'lucide-react'; // Adjust path
 import type { UseProjectTabsReturn } from '@/hooks/useProjectTabs'; // Use 'type' import if only used as type

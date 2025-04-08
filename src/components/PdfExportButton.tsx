@@ -191,12 +191,6 @@ const addSectionContent = (
    return { page, currentY };
 };
 
-interface TocEntry {
-  level: 1 | 2; // 1 for main sections, 2 for files/checklist items
-  name: string;
-  page: number; // 1-based page number
-}
-
 // Interface for file entries within a section's borderou
 interface BorderouEntry {
   name: string; // File name or checklist item label
@@ -285,7 +279,7 @@ export default function PdfExportButton({ project }: PdfExportButtonProps) {
         // --- REUSABLE FUNCTION TO GENERATE CHECKLIST CONTENT PAGES ---
         const generateChecklistContent = async (
             sectionKey: keyof typeof borderouData,
-            tabData: { checklistItems?: ChecklistItem[] } | undefined
+            tabData: { checklistItems?: any } | undefined
         ): Promise<void> => {
             if (!tabData?.checklistItems) return;
 
@@ -336,7 +330,6 @@ export default function PdfExportButton({ project }: PdfExportButtonProps) {
         const borderouPagesMap: Map<string, { page: PDFPage, finalPageNum: number | null }> = new Map();
         const borderouDoc = await PDFDocument.create();
         // --- Embed fonts needed for drawing borderou ---
-        const borderouTimesRoman = await borderouDoc.embedFont(StandardFonts.TimesRoman);
         const borderouTimesBold = await borderouDoc.embedFont(StandardFonts.TimesRomanBold);
 
         for (const sectionKey of ['Proiectare', 'Executie', 'Receptie', 'Urmarire'] as const) {
@@ -355,12 +348,7 @@ export default function PdfExportButton({ project }: PdfExportButtonProps) {
                  borderouY -= 40;
                  // Draw Table Headers using borderou fonts...
                  borderouY -= 20;
-                 for (const entry of entries) {
-                    if (borderouY < margin) break;
-                    // Draw entry name (truncated) using borderou fonts...
-                    // Draw page number (right-aligned) using borderou fonts...
-                    borderouY -= 15;
-                 }
+                 
                  // Copy the drawn page (now using self-contained fonts)
                  const [copiedBorderouPage] = await tempPdfDoc.copyPages(borderouDoc, [0]);
                  borderouPagesMap.set(sectionKey, { page: copiedBorderouPage, finalPageNum: null });
