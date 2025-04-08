@@ -193,38 +193,47 @@ export default function PdfExportButton({ project }: PdfExportButtonProps) {
       
       // Function to get a URL from a file object or URL string
       const getFileUrl = async (fileOrUrl: any): Promise<string | null> => {
+        // Add logging to see exactly what we receive
+        console.log('[getFileUrl] Input:', fileOrUrl); 
+        
         if (!fileOrUrl) return null;
         
         // If it's a string, assume it's already a URL
         if (typeof fileOrUrl === 'string') {
+          console.log('[getFileUrl] Type: string, URL:', fileOrUrl);
           return fileOrUrl;
         }
         
-        // If it has a 'url' property, use that
+        // If it has a 'url' property (like from Firebase Storage)
         if (fileOrUrl.url && typeof fileOrUrl.url === 'string') {
+          console.log('[getFileUrl] Type: object with url property, URL:', fileOrUrl.url);
           return fileOrUrl.url;
         }
         
-        // If it has a 'path' property, use that
+        // If it has a 'path' property
         if (fileOrUrl.path && typeof fileOrUrl.path === 'string') {
+          console.log('[getFileUrl] Type: object with path property, Path:', fileOrUrl.path);
           return fileOrUrl.path;
         }
         
-        // If it's a File object, create a URL for it
+        // If it's a File object (less likely for persisted data)
         if (fileOrUrl instanceof File || 
             (fileOrUrl.type && fileOrUrl.size && fileOrUrl.name)) {
-          return URL.createObjectURL(fileOrUrl);
+          const blobUrl = URL.createObjectURL(fileOrUrl);
+          console.log('[getFileUrl] Type: File object, Created Blob URL:', blobUrl);
+          return blobUrl;
         }
         
-        // If it has a toString method, try that
+        // Fallback attempt (less reliable)
         if (typeof fileOrUrl.toString === 'function') {
           const str = fileOrUrl.toString();
           if (str !== '[object Object]') {
-            return str;
+             console.log('[getFileUrl] Type: object with toString, String:', str);
+             return str;
           }
         }
         
-        console.error('Unable to get URL from:', fileOrUrl);
+        console.error('[getFileUrl] Unable to get URL from:', fileOrUrl);
         return null;
       };
       
@@ -306,14 +315,13 @@ export default function PdfExportButton({ project }: PdfExportButtonProps) {
         }
       };
       
-      // Function to add a section with its PDF
+      // Function to add a section with its PDF(s)
       const addSectionWithPdf = async (
         title: string,
         content: Array<{ label: string; value: string }>,
-        pdfFile?: any
+        uploadedFilesArray?: Array<{ url?: string; path?: string; name?: string } | string | File> 
       ): Promise<void> => {
-        // Add section content
-        const sectionPage = pdfDoc.addPage([595.276, 841.890]);
+        let sectionPage = pdfDoc.addPage([595.276, 841.890]);
         let currentY = sectionPage.getHeight() - 50;
         const margin = 50;
         const contentWidth = sectionPage.getWidth() - (margin * 2);
@@ -332,8 +340,8 @@ export default function PdfExportButton({ project }: PdfExportButtonProps) {
         for (const item of content) {
           // Check if we need a new page
           if (currentY < 100) {
-            const newPage = pdfDoc.addPage([595.276, 841.890]);
-            currentY = newPage.getHeight() - 50;
+            sectionPage = pdfDoc.addPage([595.276, 841.890]);
+            currentY = sectionPage.getHeight() - 50;
           }
           
           if (item.value !== undefined && item.value !== null && item.value !== '') {
@@ -362,54 +370,85 @@ export default function PdfExportButton({ project }: PdfExportButtonProps) {
           }
         }
         
-        // Add note about attached PDF if there is one
-        if (pdfFile) {
-          currentY -= 20;
-          
-          // Try to embed the PDF
-          const result = await embedPdf(pdfFile);
-          
-          if (result.success) {
-            sectionPage.drawText('Document PDF atasat (urmeaza imediat):', {
-              x: margin,
-              y: currentY,
-              size: 12,
-              font: timesBoldFont,
-              color: rgb(0, 0, 0),
-            });
-          } else {
-            sectionPage.drawText('Eroare la incarcarea documentului PDF:', {
-              x: margin,
-              y: currentY,
-              size: 12,
-              font: timesBoldFont,
-              color: rgb(1, 0, 0), // Red color
-            });
-            
-            currentY -= 20;
-            sectionPage.drawText(removeAllDiacritics(result.error || 'Motiv necunoscut'), {
-              x: margin,
-              y: currentY,
-              size: 12,
-              font: timesRomanFont,
-              color: rgb(1, 0, 0), // Red color
-            });
-            
-            // Add file info for debugging
-            currentY -= 20;
-            const fileInfo = typeof pdfFile === 'string' 
-              ? pdfFile 
-              : `File object: ${pdfFile.name || 'unnamed'}`;
-            
-            sectionPage.drawText(`File: ${removeAllDiacritics(fileInfo)}`, {
-              x: margin,
-              y: currentY,
-              size: 10,
-              font: timesRomanFont,
-              color: rgb(0, 0, 0),
-            });
+        // --- MODIFICATION START ---
+        // Check if the array exists and has items
+        if (uploadedFilesArray && uploadedFilesArray.length > 0) { 
+          currentY -= 20; // Space before the list of attached PDFs
+
+          // Indicate that attached documents follow
+          sectionPage.drawText(`Documente PDF atasate (${uploadedFilesArray.length}) (urmeaza imediat):`, {
+             x: margin,
+             y: currentY,
+             size: 12,
+             font: timesBoldFont,
+             color: rgb(0, 0, 0),
+          });
+          currentY -= 5; // Small space before starting the embedding process
+
+          let successfulEmbeds = 0;
+          let failedEmbeds: { fileInfo: string; error: string }[] = [];
+
+          // Loop through each file in the array
+          for (const fileToEmbed of uploadedFilesArray) {
+            if (fileToEmbed) { // Ensure the item is not null/undefined
+              console.log(`[addSectionWithPdf] Attempting to embed file:`, fileToEmbed);
+              const result = await embedPdf(fileToEmbed); 
+              
+              if (result.success) {
+                successfulEmbeds++;
+                console.log(`[addSectionWithPdf] Successfully embedded file.`);
+              } else {
+                // Collect information about failed embeds
+                console.error(`[addSectionWithPdf] Failed to embed file. Error: ${result.error}`);
+                let fileInfo = 'N/A';
+                 if(typeof fileToEmbed === 'string') {
+                    fileInfo = fileToEmbed;
+                } else if (fileToEmbed && typeof fileToEmbed === 'object' && 'name' in fileToEmbed) {
+                   // @ts-ignore - Try to get name if it exists
+                   fileInfo = `File object: ${fileToEmbed.name || 'unnamed'}`;
+                } else if (fileToEmbed && typeof fileToEmbed === 'object') {
+                   fileInfo = `Object: ${JSON.stringify(fileToEmbed)}`; 
+                }
+                failedEmbeds.push({ fileInfo, error: result.error || 'Motiv necunoscut' });
+              }
+            } else {
+              console.log("[addSectionWithPdf] Skipping null/undefined item in uploadedFilesArray.");
+            }
+          } // End of loop
+
+          // Add error summary to the section page if any embeds failed
+          if (failedEmbeds.length > 0) {
+             currentY -= 20; // Add space before error summary
+             sectionPage.drawText(`Eroare la incarcarea a ${failedEmbeds.length} document(e) PDF:`, {
+                 x: margin,
+                 y: currentY,
+                 size: 12,
+                 font: timesBoldFont,
+                 color: rgb(1, 0, 0), // Red color
+             });
+             
+             for(const failure of failedEmbeds) {
+                 currentY -= 15;
+                 if (currentY < 50) { // Add new page if needed for errors
+                    sectionPage = pdfDoc.addPage([595.276, 841.890]);
+                    currentY = sectionPage.getHeight() - 50;
+                 }
+                 sectionPage.drawText(`- ${removeAllDiacritics(failure.fileInfo)}: ${removeAllDiacritics(failure.error)}`, {
+                     x: margin + 10, // Indent errors
+                     y: currentY,
+                     size: 10,
+                     font: timesRomanFont,
+                     color: rgb(1, 0, 0), 
+                 });
+             }
           }
+
+        } else {
+             // Optional: Add text if no files were found/provided
+             // currentY -= 20;
+             // sectionPage.drawText('Niciun document PDF atasat.', { /* ... options ... */ });
         }
+        // --- MODIFICATION END ---
       };
       
       // Add General Information section with its PDF

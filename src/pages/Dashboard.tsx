@@ -18,9 +18,9 @@ import {
   X as XIcon,
 } from 'lucide-react'
 import { Project, GeneralTab } from '@/types/Project'
-import * as pdfjsLib from 'pdfjs-dist'
 
 import PdfExportButton from "@/components/PdfExportButton";
+import * as pdfjsLib from 'pdfjs-dist';
 
 
 
@@ -29,49 +29,92 @@ const Dashboard: React.FC = () => {
   const { user, logout } = useAuth()
   const [showModal, setShowModal] = useState(false)
   const [editingProject, setEditingProject] = useState<Project | null>(null)
-  const [projectName, setProjectName] = useState('')
   const [projectDescription, setProjectDescription] = useState('')
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
   const [isSaving, setIsSaving] = useState(false)
-  const [constructionName, setConstructionName] = useState('');
-  const [address, setAddress] = useState('');
-  const [beneficiary, setBeneficiary] = useState('');
-  const [designer, setDesigner] = useState('');
-  const [builder, setBuilder] = useState('');
-  const [startDate, setStartDate] = useState<string>('');
-  const [endDate, setEndDate] = useState<string>('');
+  const [designer, setDesigner] = useState('')
+  const [builder, setBuilder] = useState('')
+
+  // --- NEW State variables for the modal ---
+  const [modalConstructionName, setModalConstructionName] = useState('')
+  const [modalLocalization, setModalLocalization] = useState('')
+  const [modalInvestorName, setModalInvestorName] = useState('')
+  const [modalInvestorAddress, setModalInvestorAddress] = useState('')
+  const [modalInvestorCounty, setModalInvestorCounty] = useState('')
+  const [modalAuthNumber, setModalAuthNumber] = useState('')
+  const [modalAuthDate, setModalAuthDate] = useState('')
+  const [modalAuthDeadline, setModalAuthDeadline] = useState('')
+  const [modalISCNoticeNr, setModalISCNoticeNr] = useState('')
+  const [modalISCNoticeDate, setModalISCNoticeDate] = useState('')
+  const [modalReceptionDate, setModalReceptionDate] = useState('')
+  const [modalSiteAddress, setModalSiteAddress] = useState('')
+  // --- End NEW State variables ---
 
   const componentRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState<Record<keyof Project['tabs'], boolean>>({
+    general: false,
+    technical: false,
+    financial: false,
+    resources: false
+  });
 
   useEffect(() => {
-    // For production, use a CDN to load the worker
-    const workerUrl = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
-    pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl
-  }, [])
+    // Path will be relative to the root of the deployed site
+    const workerSrcPath = `/pdf.worker.mjs`; // Just the filename
+
+    try {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrcPath;
+      console.log("PDF.js workerSrc set to:", workerSrcPath);
+    } catch (error) {
+      console.error("Failed to set PDF.js workerSrc:", error);
+      // Handle error
+    }
+  }, []);
 
   const handleOpenModal = (project?: Project) => {
     if (project) {
       setEditingProject(project)
-      setProjectName(project.name)
       setProjectDescription(project.description)
-      setConstructionName(project.constructionName || '');
-      setAddress(project.address || '');
-      setBeneficiary(project.beneficiary || '');
-      setDesigner(project.designer || '');
-      setBuilder(project.builder || '');
-      setStartDate(new Date(project.tabs.general.startDate || '').toISOString().split('T')[0]);
-      setEndDate(new Date(project.tabs.general.endDate || '').toISOString().split('T')[0]);
+
+      // Populate new modal states from project data
+      setModalConstructionName(project.constructionName || '')
+      setModalLocalization(project.address || '')
+      setModalInvestorName(project.beneficiary || '')
+      setModalInvestorAddress(project.investorAddress || '')
+      setModalInvestorCounty(project.investorCounty || '')
+      setModalAuthNumber(project.authNumber || '')
+      setModalAuthDate(formatDateForInput(project.authDate))
+      setModalAuthDeadline(formatDateForInput(project.authDeadline))
+      setModalISCNoticeNr(project.iscNoticeNumber || '')
+      setModalISCNoticeDate(formatDateForInput(project.iscNoticeDate))
+      setModalReceptionDate(formatDateForInput(project.receptionDate))
+      setModalSiteAddress(project.siteAddress || '')
+
+      // Keep these if used elsewhere
+      setDesigner(project.designer || '')
+      setBuilder(project.builder || '')
+
     } else {
       setEditingProject(null)
-      setProjectName('')
       setProjectDescription('')
-      setConstructionName('');
-      setAddress('');
-      setBeneficiary('');
-      setDesigner('');
-      setBuilder('');
-      setStartDate(new Date().toISOString().split('T')[0]);
-      setEndDate(new Date().toISOString().split('T')[0]);
+
+      // Reset new modal states
+      setModalConstructionName('')
+      setModalLocalization('')
+      setModalInvestorName('')
+      setModalInvestorAddress('')
+      setModalInvestorCounty('')
+      setModalAuthNumber('')
+      setModalAuthDate('')
+      setModalAuthDeadline('')
+      setModalISCNoticeNr('')
+      setModalISCNoticeDate('')
+      setModalReceptionDate('')
+      setModalSiteAddress('')
+
+      // Reset others if needed
+      setDesigner('')
+      setBuilder('')
     }
     setShowModal(true)
   }
@@ -79,78 +122,79 @@ const Dashboard: React.FC = () => {
   const handleCloseModal = () => {
     setShowModal(false)
     setEditingProject(null)
-    setProjectName('')
     setProjectDescription('')
-    setConstructionName('');
-    setAddress('');
-    setBeneficiary('');
-    setDesigner('');
-    setBuilder('');
-    setStartDate(new Date().toISOString().split('T')[0]);
-    setEndDate(new Date().toISOString().split('T')[0]);
+
+    // Reset new modal states
+    setModalConstructionName('')
+    setModalLocalization('')
+    setModalInvestorName('')
+    setModalInvestorAddress('')
+    setModalInvestorCounty('')
+    setModalAuthNumber('')
+    setModalAuthDate('')
+    setModalAuthDeadline('')
+    setModalISCNoticeNr('')
+    setModalISCNoticeDate('')
+    setModalReceptionDate('')
+    setModalSiteAddress('')
+
+    // Reset others if needed
+    setDesigner('')
+    setBuilder('')
   }
 
   const handleSubmit = async () => {
-    if (!projectName.trim()) {
-      alert('Vă rugăm să introduceți numele proiectului');
+    if (!modalConstructionName.trim()) {
+      alert('Vă rugăm să introduceți Denumirea conform autorizației');
       return;
     }
 
-    const projectData: Omit<Project, 'id' | 'createdAt'> = {
-      name: projectName,
-      description: projectDescription,
-      constructionName,
-      address,
-      beneficiary,
-      designer,
-      builder,
+    const projectBaseData: Partial<Project> = {
+      name: modalConstructionName,
+      description: projectDescription || `Detalii pentru ${modalConstructionName}`,
       updatedAt: new Date(),
-      tabs: {
-        general: {
-          projectType: '',
-          clientName: '',
-          startDate: startDate,
-          endDate: endDate,
-          uploadedFiles: [],
-        },
-        technical: {
-          technologies: [],
-          complexity: "Low" as const,
-          productDescription: '',
-          technicalCharacteristics: '',
-          productionConditions: '',
-          uploadedFiles: [],
-          specifications: '',
-          technicalRequirements: ''
-        },
-        financial: {
-          budget: 0,
-          estimatedCost: 0,
-          currency: 'RON',
-          profitMargin: 0,
-          uploadedFiles: [],
-        },
-        resources: {
-          teamMembers: [],
-          requiredSkills: [],
-          equipmentNeeded: [],
-          uploadedFiles: [],
-        }
-      }
+      constructionName: modalConstructionName,
+      address: modalLocalization,
+      beneficiary: modalInvestorName,
+      investorAddress: modalInvestorAddress,
+      investorCounty: modalInvestorCounty,
+      authNumber: modalAuthNumber,
+      authDate: modalAuthDate || undefined,
+      authDeadline: modalAuthDeadline || undefined,
+      iscNoticeNumber: modalISCNoticeNr,
+      iscNoticeDate: modalISCNoticeDate || undefined,
+      receptionDate: modalReceptionDate || undefined,
+      siteAddress: modalSiteAddress,
+      designer: designer,
+      builder: builder,
     };
 
+    let projectData: Omit<Project, 'id' | 'createdAt'>;
+
     if (editingProject) {
-      projectData.tabs = {
-        general: { ...editingProject.tabs.general, uploadedFiles: editingProject.tabs.general.uploadedFiles || [] },
-        technical: { ...editingProject.tabs.technical, uploadedFiles: editingProject.tabs.technical.uploadedFiles || [] },
-        financial: { ...editingProject.tabs.financial, uploadedFiles: editingProject.tabs.financial.uploadedFiles || [] },
-        resources: { ...editingProject.tabs.resources, uploadedFiles: editingProject.tabs.resources.uploadedFiles || [] }
-      };
-      projectData.tabs.general.startDate = startDate;
-      projectData.tabs.general.endDate = endDate;
+      projectData = {
+        ...projectBaseData,
+        tabs: editingProject.tabs,
+      } as Omit<Project, 'id' | 'createdAt'>;
     } else {
-      projectData.tabs.general.startDate = startDate;
-      projectData.tabs.general.endDate = endDate;
+      projectData = {
+        ...projectBaseData,
+        tabs: {
+          general: { projectType: '', clientName: '', startDate: '', endDate: '', uploadedFiles: [] },
+          technical: {
+            technologies: [],
+            complexity: "Low",
+            productDescription: '',
+            technicalCharacteristics: '',
+            productionConditions: '',
+            specifications: '',
+            technicalRequirements: '',
+            uploadedFiles: []
+          },
+          financial: { budget: 0, estimatedCost: 0, currency: 'RON', profitMargin: 0, uploadedFiles: [] },
+          resources: { teamMembers: [], requiredSkills: [], equipmentNeeded: [], uploadedFiles: [] }
+        }
+      } as Omit<Project, 'id' | 'createdAt'>;
     }
 
     try {
@@ -202,32 +246,32 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, tab: keyof Project['tabs']) => {
-    const file = event.target.files?.[0];
+  // --- Refactor File Upload Logic ---
+  // Create a separate function to handle the actual file processing logic
+  const handleFileUploadLogic = async (file: File | null, tab: keyof Project['tabs']) => {
     if (!file || !selectedProject) return;
 
+    // Optional: Check if file with the same name already exists
     const currentFiles = selectedProject.tabs[tab].uploadedFiles || [];
     if (currentFiles.some(f => f.name === file.name)) {
        alert(`Un fișier cu numele "${file.name}" există deja în această secțiune.`);
-       event.target.value = '';
-       return;
+       return false; // Indicate failure
     }
 
     if (file.type !== 'application/pdf') {
       alert('Please upload a PDF file');
-      event.target.value = '';
-      return;
+      return false; // Indicate failure
     }
 
-    if (file.size > 10 * 1024 * 1024) {
+    if (file.size > 10 * 1024 * 1024) { // 10MB limit
       alert('File size should be less than 10MB');
-      event.target.value = '';
-      return;
+      return false; // Indicate failure
     }
 
-    setIsSaving(true);
+    setIsSaving(true); // Still use isSaving for the upload process
 
     try {
+      // Note: Blob URLs are temporary. For persistence, you'd need actual file storage.
       const fileUrl = URL.createObjectURL(file);
       const newFileEntry = {
         name: file.name,
@@ -242,26 +286,71 @@ const Dashboard: React.FC = () => {
           ...selectedProject.tabs,
           [tab]: {
             ...selectedProject.tabs[tab],
-            uploadedFiles: updatedFiles
+            uploadedFiles: updatedFiles // Update with the new array
           }
         }
       };
 
+      // Update the project in the backend/context
       await updateProject(selectedProject.id, updatedProjectData);
 
+      // Update the local selected project state
       setSelectedProject({
         ...selectedProject,
-        ...updatedProjectData
+        ...updatedProjectData // Merge the updated tabs back
       });
-
-      event.target.value = '';
+      return true; // Indicate success
 
     } catch (error) {
       console.error('Error uploading file:', error);
       alert('Error uploading file. Please try again.');
-      event.target.value = '';
+      return false; // Indicate failure
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // --- Original handleFileUpload now uses the logic function ---
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, tab: keyof Project['tabs']) => {
+    const file = event.target.files?.[0] || null;
+    const success = await handleFileUploadLogic(file, tab);
+    if (success || !event.target) {
+       event.target.value = ''; // Clear input only on success or if target exists
+    }
+  };
+
+  // --- Drag and Drop Handlers ---
+  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>, tab: keyof Project['tabs']) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(prev => ({ ...prev, [tab]: true }));
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>, tab: keyof Project['tabs']) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Check if leaving to a child element, only set false if leaving the container itself
+    const relatedTarget = e.relatedTarget as Node;
+    if (!e.currentTarget.contains(relatedTarget)) {
+        setIsDragging(prev => ({ ...prev, [tab]: false }));
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault(); // Necessary to allow drop
+    e.stopPropagation();
+  };
+
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>, tab: keyof Project['tabs']) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(prev => ({ ...prev, [tab]: false })); // Reset drag state
+
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+        // Handle only the first file dropped for simplicity
+        const file = files[0];
+        await handleFileUploadLogic(file, tab); // Use the refactored logic
     }
   };
 
@@ -302,14 +391,31 @@ const Dashboard: React.FC = () => {
      }
   };
 
+  // --- Update renderFileUpload to include Drop Zone logic ---
   const renderFileUpload = (tab: keyof Project['tabs']) => {
     const files = selectedProject?.tabs[tab]?.uploadedFiles || [];
+    const isCurrentlyDragging = isDragging[tab] || false;
 
     return (
-      <div className="mt-6 border-t pt-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-medium text-gray-700">Documente Aditionale PDF</h3>
-          <div className="relative">
+      // Add drop zone event handlers and conditional styling
+      <div
+        className={`mt-6 border-t pt-6 border-dashed rounded-lg p-6 transition-colors duration-200 ease-in-out ${
+          isCurrentlyDragging
+            ? 'border-primary-400 bg-primary-50 ring-2 ring-primary-200' // Style when dragging over
+            : 'border-gray-300 hover:border-gray-400' // Default style
+        }`}
+        onDragEnter={(e) => handleDragEnter(e, tab)}
+        onDragLeave={(e) => handleDragLeave(e, tab)}
+        onDragOver={handleDragOver}
+        onDrop={(e) => handleDrop(e, tab)}
+      >
+        <div className="flex flex-col sm:flex-row items-center justify-between mb-4 gap-4">
+          <div className="text-center sm:text-left">
+             <h3 className="font-medium text-gray-700">Documente Aditionale PDF</h3>
+             <p className="text-sm text-gray-500">Trageți și plasați un fișier PDF aici sau folosiți butonul.</p>
+          </div>
+          {/* "Add PDF" button */}
+          <div className="relative flex-shrink-0">
             <input
               type="file"
               accept=".pdf"
@@ -320,18 +426,26 @@ const Dashboard: React.FC = () => {
             />
             <label
               htmlFor={`file-upload-${tab}`}
-              className={`flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg cursor-pointer transition-colors ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`flex items-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg cursor-pointer transition-colors ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <Upload className="w-4 h-4" />
-              {isSaving ? 'Se încarcă...' : 'Adaugă PDF'}
+              {isSaving ? 'Se încarcă...' : 'Selectează PDF'}
             </label>
           </div>
         </div>
 
-        {files.length > 0 && (
+        {/* Visual cue when dragging */}
+        {isCurrentlyDragging && (
+            <div className="text-center py-4 text-primary-600 font-medium">
+                Plasați fișierul PDF aici...
+            </div>
+        )}
+
+        {/* List of uploaded files */}
+        {files.length > 0 && !isCurrentlyDragging && ( // Hide list while dragging for clarity
           <div className="space-y-3 mt-4">
             {files.map((file, index) => (
-              <div key={index} className="bg-gray-50 p-3 rounded-lg flex items-center justify-between text-sm">
+              <div key={`${tab}-${file.name}-${index}`} className="bg-gray-50 p-3 rounded-lg flex items-center justify-between text-sm border border-gray-200">
                 <div className="flex items-center gap-2 overflow-hidden">
                    <FileText className="w-5 h-5 text-primary-600 flex-shrink-0" />
                    <span className="text-gray-700 truncate" title={file.name}>
@@ -419,112 +533,146 @@ const Dashboard: React.FC = () => {
   );
 
   const renderProjectCreationForm = () => (
-    <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
+    <form onSubmit={(e) => e.preventDefault()} className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+      {/* Obiectiv Section */}
+      <fieldset className="border border-gray-300 p-4 rounded-md">
+        <legend className="text-lg font-semibold px-2 text-gray-700">Obiectiv</legend>
+        <div className="space-y-3 mt-2">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Denumire conf autorizației de construire
+            </label>
+            <input
+              type="text"
+              value={modalConstructionName}
+              onChange={(e) => setModalConstructionName(e.target.value)}
+              className="w-full px-3 py-2 text-base rounded-md border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+              placeholder="Introduceți denumirea obiectivului"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Localizare
+            </label>
+            <input
+              type="text"
+              value={modalLocalization}
+              onChange={(e) => setModalLocalization(e.target.value)}
+              className="w-full px-3 py-2 text-base rounded-md border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+              placeholder="Introduceți localizarea"
+            />
+          </div>
+        </div>
+      </fieldset>
+
+      {/* Investitorul Section */}
+      <fieldset className="border border-gray-300 p-4 rounded-md">
+        <legend className="text-lg font-semibold px-2 text-gray-700">Investitorul</legend>
+        <div className="space-y-3 mt-2">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Denumire
+            </label>
+            <input
+              type="text"
+              value={modalInvestorName}
+              onChange={(e) => setModalInvestorName(e.target.value)}
+              className="w-full px-3 py-2 text-base rounded-md border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+              placeholder="Introduceți denumirea investitorului"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Adresa
+            </label>
+            <input
+              type="text"
+              value={modalInvestorAddress}
+              onChange={(e) => setModalInvestorAddress(e.target.value)}
+              className="w-full px-3 py-2 text-base rounded-md border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+              placeholder="Introduceți adresa investitorului"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Județ
+            </label>
+            <input
+              type="text"
+              value={modalInvestorCounty}
+              onChange={(e) => setModalInvestorCounty(e.target.value)}
+              className="w-full px-3 py-2 text-base rounded-md border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+              placeholder="Introduceți județul"
+            />
+          </div>
+        </div>
+      </fieldset>
+
+      {/* Autorizatia de construire Section */}
+       <fieldset className="border border-gray-300 p-4 rounded-md">
+         <legend className="text-lg font-semibold px-2 text-gray-700">Autorizația de construire</legend>
+         <div className="space-y-3 mt-2">
+           <div className="grid grid-cols-2 gap-4">
+             <div>
+               <label className="block text-sm font-medium text-gray-700 mb-1">Număr</label>
+               <input type="text" value={modalAuthNumber} onChange={(e) => setModalAuthNumber(e.target.value)} className="w-full px-3 py-2 text-base rounded-md border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors" placeholder="Număr autorizație" />
+             </div>
+             <div>
+               <label className="block text-sm font-medium text-gray-700 mb-1">Data</label>
+               <input type="date" value={modalAuthDate} onChange={(e) => setModalAuthDate(e.target.value)} className="w-full px-3 py-2 text-base rounded-md border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors" />
+             </div>
+           </div>
+           <div>
+             <label className="block text-sm font-medium text-gray-700 mb-1">Termen de execuție</label>
+             <input type="date" value={modalAuthDeadline} onChange={(e) => setModalAuthDeadline(e.target.value)} className="w-full px-3 py-2 text-base rounded-md border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors" />
+           </div>
+           <div className="grid grid-cols-2 gap-4">
+             <div>
+               <label className="block text-sm font-medium text-gray-700 mb-1">Nr. anunț ISC</label>
+               <input type="text" value={modalISCNoticeNr} onChange={(e) => setModalISCNoticeNr(e.target.value)} className="w-full px-3 py-2 text-base rounded-md border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors" placeholder="Număr anunț ISC" />
+             </div>
+             <div>
+               <label className="block text-sm font-medium text-gray-700 mb-1">Data anunț ISC</label>
+               <input type="date" value={modalISCNoticeDate} onChange={(e) => setModalISCNoticeDate(e.target.value)} className="w-full px-3 py-2 text-base rounded-md border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors" />
+             </div>
+           </div>
+           <div>
+             <label className="block text-sm font-medium text-gray-700 mb-1">Data recepției la terminarea lucrărilor</label>
+             <input type="date" value={modalReceptionDate} onChange={(e) => setModalReceptionDate(e.target.value)} className="w-full px-3 py-2 text-base rounded-md border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors" />
+           </div>
+         </div>
+       </fieldset>
+
+      {/* Adresa Santier Section */}
+       <fieldset className="border border-gray-300 p-4 rounded-md">
+         <legend className="text-lg font-semibold px-2 text-gray-700">Adresa Șantier</legend>
+         <div className="space-y-3 mt-2">
+           <div>
+            {/* <label className="block text-sm font-medium text-gray-700 mb-1">Adresa Șantier</label> */}
+             <input
+               type="text"
+               value={modalSiteAddress}
+               onChange={(e) => setModalSiteAddress(e.target.value)}
+               className="w-full px-3 py-2 text-base rounded-md border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+               placeholder="Introduceți adresa șantierului"
+             />
+           </div>
+         </div>
+       </fieldset>
+
+      {/* Keep old fields if needed, or remove them */}
+      {/* 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Numele Proiectului
+          Numele Proiectului (List View) 
         </label>
-        <input
-          type="text"
-          value={projectName}
-          onChange={(e) => setProjectName(e.target.value)}
-          className="w-full px-3 py-2 text-base rounded-md border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-          placeholder="Introduceți numele proiectului"
-        />
+        <input type="text" value={projectName} onChange={(e) => setProjectName(e.target.value)} className="w-full ..." placeholder="Nume pentru lista de proiecte" />
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Descriere
-        </label>
-        <textarea
-          value={projectDescription}
-          onChange={(e) => setProjectDescription(e.target.value)}
-          className="w-full px-3 py-2 text-base rounded-md border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-          placeholder="Introduceți descrierea proiectului"
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Numele Construcției
-        </label>
-        <input
-          type="text"
-          value={constructionName}
-          onChange={(e) => setConstructionName(e.target.value)}
-          className="w-full px-3 py-2 text-base rounded-md border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-          placeholder="Introduceți numele construcției"
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Adresa
-        </label>
-        <input
-          type="text"
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-          className="w-full px-3 py-2 text-base rounded-md border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-          placeholder="Introduceți adresa"
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Beneficiar
-        </label>
-        <input
-          type="text"
-          value={beneficiary}
-          onChange={(e) => setBeneficiary(e.target.value)}
-          className="w-full px-3 py-2 text-base rounded-md border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-          placeholder="Introduceți numele beneficiarului"
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Proiectant
-        </label>
-        <input
-          type="text"
-          value={designer}
-          onChange={(e) => setDesigner(e.target.value)}
-          className="w-full px-3 py-2 text-base rounded-md border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-          placeholder="Introduceți numele proiectantului"
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Constructor
-        </label>
-        <input
-          type="text"
-          value={builder}
-          onChange={(e) => setBuilder(e.target.value)}
-          className="w-full px-3 py-2 text-base rounded-md border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-          placeholder="Introduceți numele constructorului"
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Data Început
-        </label>
-        <input
-          type="date"
-          value={startDate}
-          onChange={(e) => setStartDate(e.target.value)}
-          className="w-full px-3 py-2 text-base rounded-md border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Data Sfârșit
-        </label>
-        <input
-          type="date"
-          value={endDate}
-          onChange={(e) => setEndDate(e.target.value)}
-          className="w-full px-3 py-2 text-base rounded-md border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-        />
-      </div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Descriere (List View)</label>
+        <textarea value={projectDescription} onChange={(e) => setProjectDescription(e.target.value)} className="w-full ..." placeholder="Descriere pentru lista de proiecte" />
+      </div> 
+      */}
     </form>
   );
 
@@ -576,6 +724,27 @@ const Dashboard: React.FC = () => {
     } catch (error) {
       console.error('Error copying project:', error);
       alert('Error copying project. Please try again.');
+    }
+  };
+
+  // Helper to format date string for input type="date"
+  const formatDateForInput = (dateString: string | undefined | null): string => {
+    if (!dateString) return '';
+    try {
+      // Assumes dateString is already in 'YYYY-MM-DD' or compatible format
+      // If it's a full ISO string, extract the date part
+      if (dateString.includes('T')) {
+        return dateString.split('T')[0];
+      }
+      // Basic validation if needed
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+         return dateString;
+      }
+      // Attempt to parse if format is different (might need adjustment)
+      return new Date(dateString).toISOString().split('T')[0];
+    } catch (e) {
+      console.error("Error formatting date for input:", dateString, e);
+      return '';
     }
   };
 
@@ -833,7 +1002,7 @@ const Dashboard: React.FC = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Preț de Vânzare Recomandat</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Preț de Vânzare</label>
                       <input
                         type="number"
                         value={selectedProject.tabs.financial.estimatedCost}
@@ -1005,22 +1174,24 @@ const Dashboard: React.FC = () => {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-          <div className="bg-white rounded-lg shadow-xl w-96 p-6">
-            <h2 className="text-xl font-semibold mb-4 text-gray-800">
-              {editingProject ? 'Editare Proiect' : 'Creare Proiect Nou'}
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl p-6 flex flex-col">
+            <h2 className="text-xl font-semibold mb-4 text-gray-800 flex-shrink-0">
+              {editingProject ? 'Editare Detalii Proiect' : 'Creare Proiect Nou'}
             </h2>
-            {renderProjectCreationForm()}
-            <div className="flex justify-end space-x-2">
+            <div className="flex-grow overflow-y-auto mb-4 pr-2 custom-scrollbar">
+              {renderProjectCreationForm()}
+            </div>
+            <div className="flex justify-end space-x-3 flex-shrink-0 border-t pt-4">
               <button 
                 onClick={handleCloseModal}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
+                className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors"
               >
                 Anulare
               </button>
               <button 
                 onClick={handleSubmit}
-                className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
+                className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
               >
                 {editingProject ? 'Salvează Modificările' : 'Creează Proiect'}
               </button>

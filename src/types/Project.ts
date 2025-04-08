@@ -52,11 +52,20 @@ export interface Project {
   id: string;
   name: string;
   description: string;
-  constructionName: string;
-  address: string;
-  beneficiary: string;
-  designer: string;
-  builder: string;
+  constructionName?: string;
+  address?: string;
+  beneficiary?: string;
+  investorAddress?: string;
+  investorCounty?: string;
+  authNumber?: string;
+  authDate?: string;
+  authDeadline?: string;
+  iscNoticeNumber?: string;
+  iscNoticeDate?: string;
+  receptionDate?: string;
+  siteAddress?: string;
+  designer?: string;
+  builder?: string;
   createdAt: Date;
   updatedAt: Date;
   tabs: {
