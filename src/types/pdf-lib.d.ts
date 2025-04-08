@@ -4,6 +4,7 @@ declare module 'pdf-lib' {
     embedFont(font: StandardFonts): Promise<PDFFont>;
     addPage(size: [number, number]): PDFPage;
     save(): Promise<Uint8Array>;
+    load: any;
   }
 
   export class PDFPage {

@@ -1,129 +1,45 @@
 import { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Eye } from "lucide-react";
+import { Download } from "lucide-react";
 import type { Project } from "@/types/Project";
-import { PDFDocument } from 'pdf-lib';
-import { StandardFonts, rgb } from 'pdf-lib';
+import { PDFDocument, StandardFonts, rgb, PDFPage, PDFFont } from 'pdf-lib';
 
 interface PdfExportButtonProps {
   project: Project;
 }
 
-export default function PdfExportButton({ project }: PdfExportButtonProps) {
-  const [isGenerating, setIsGenerating] = useState(false);
+// --- Helper Functions ---
 
-  const generatePDF = async () => {
-    try {
-      setIsGenerating(true);
-      
-      // Create a new PDF document
-      const pdfDoc = await PDFDocument.create();
-      
-      // Embed fonts with Unicode support
-      const timesRomanFont = await pdfDoc.embedFont(StandardFonts.TimesRoman);
-      const timesBoldFont = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
-      
-      // Function to remove ALL diacritics and special characters
-      function removeAllDiacritics(str: string | undefined | null): string {
+function removeAllDiacritics(str: string): string {
         if (!str) return '';
-        
-        // Create a simple mapping for Romanian characters
-        const map: Record<string, string> = {
-          'ă': 'a', 'â': 'a', 'î': 'i', 'ș': 's', 'ț': 't',
-          'Ă': 'A', 'Â': 'A', 'Î': 'I', 'Ș': 'S', 'Ț': 'T'
-        };
-        
-        // Replace each character with its ASCII equivalent
-        return str.split('').map(char => map[char] || char)
-          .join('')
-          .normalize('NFD')  // Decompose accented characters
-          .replace(/[\u0300-\u036f]/g, '')  // Remove all accent marks
-          .replace(/[^\x00-\x7F]/g, '');  // Remove any remaining non-ASCII characters
+  return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+const formatDate = (date: string | undefined | null): string => {
+    if (!date) return '';
+    try {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(date)) { return date; }
+      const parsedDate = new Date(date);
+      if (isNaN(parsedDate.getTime())) {
+          console.warn("[PdfExportButton] formatDate: Invalid date value:", date);
+          return 'Data Invalida';
       }
-      
-      // Add title page
-      const titlePage = pdfDoc.addPage([595.276, 841.890]); // A4 size
-      const { width, height } = titlePage.getSize();
-      
-      // Title page content - using ASCII characters for the title
-      titlePage.drawText('CARTEA TEHNICA', {
-        x: width / 2 - timesBoldFont.widthOfTextAtSize('CARTEA TEHNICA', 36) / 2,
-        y: height - 250,
-        size: 36,
-        font: timesBoldFont,
-        color: rgb(0, 0, 0),
-      });
-      
-      titlePage.drawText('a constructiei', {
-        x: width / 2 - timesRomanFont.widthOfTextAtSize('a constructiei', 24) / 2,
-        y: height - 300,
-        size: 24,
-        font: timesRomanFont,
-        color: rgb(0, 0, 0),
-      });
-      
-      // Project name - remove diacritics
-      const projectName = removeAllDiacritics(project.name || 'Proiect');
-      titlePage.drawText(projectName, {
-        x: width / 2 - timesBoldFont.widthOfTextAtSize(projectName, 28) / 2,
-        y: height - 400,
-        size: 28,
-        font: timesBoldFont,
-        color: rgb(0, 0, 0),
-      });
-      
-      // Project details
-      const detailsY = height - 500;
-      const detailsX = 100;
-      const details = [
-        { label: 'Beneficiar:', value: removeAllDiacritics(project.beneficiary || '-') },
-        { label: 'Proiectant:', value: removeAllDiacritics(project.designer || '-') },
-        { label: 'Constructor:', value: removeAllDiacritics(project.builder || '-') },
-        { label: 'Adresa:', value: removeAllDiacritics(project.address || '-') },
-      ];
-      
-      details.forEach(({ label, value }, index) => {
-        titlePage.drawText(label, {
-          x: detailsX,
-          y: detailsY - (index * 30),
-          size: 12,
-          font: timesBoldFont,
-          color: rgb(0, 0, 0),
-        });
-        
-        titlePage.drawText(value, {
-          x: detailsX + 100,
-          y: detailsY - (index * 30),
-          size: 12,
-          font: timesRomanFont,
-          color: rgb(0, 0, 0),
-        });
-      });
-      
-      // Add date at the bottom - use English month names
-      const currentDate = new Date().toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long'
-      });
-      
-      titlePage.drawText(currentDate, {
-        x: width / 2 - timesRomanFont.widthOfTextAtSize(currentDate, 12) / 2,
-        y: 100,
-        size: 12,
-        font: timesRomanFont,
-        color: rgb(0, 0, 0),
-      });
-      
-      // Helper function to add wrapped text
-      const addWrappedText = (
-        page: any, 
+      return parsedDate.toISOString().split('T')[0];
+    } catch (e) {
+        console.error("[PdfExportButton] formatDate error:", date, e);
+        return 'Eroare Data';
+    }
+};
+
+const addWrappedText = (
+  page: PDFPage,
         text: string, 
         x: number, 
         y: number, 
         maxWidth: number, 
         fontSize: number, 
-        font: any
-      ): number => {
+  font: PDFFont
+): number => { // Return the updated Y coordinate
         if (!text) return y;
         const textStr = removeAllDiacritics(text);
         
@@ -136,15 +52,11 @@ export default function PdfExportButton({ project }: PdfExportButtonProps) {
           const textWidth = font.widthOfTextAtSize(testLine, fontSize);
           
           if (textWidth > maxWidth && line.length > 0) {
-            page.drawText(line, { 
-              x, 
-              y: currentY, 
-              size: fontSize,
-              font: font,
-              color: rgb(0, 0, 0),
+      page.drawText(line.trim(), {
+        x, y: currentY, size: fontSize, font: font, color: rgb(0, 0, 0),
             });
             line = word + ' ';
-            currentY -= fontSize * 1.5;
+      currentY -= fontSize * 1.5; // Adjust line height factor if needed
           } else {
             line = testLine;
           }
@@ -152,394 +64,366 @@ export default function PdfExportButton({ project }: PdfExportButtonProps) {
         
         if (line.length > 0) {
           page.drawText(line.trim(), { 
-            x, 
-            y: currentY, 
-            size: fontSize,
-            font: font,
-            color: rgb(0, 0, 0),
-          });
-        }
-        
-        return currentY - fontSize * 1.5;
-      };
-      
-      // Function to check if a file is a valid PDF
+      x, y: currentY, size: fontSize, font: font, color: rgb(0, 0, 0),
+    });
+    // Return Y below the last line drawn
+    return currentY - fontSize * 1.5;
+  }
+  // If no text was drawn (e.g., empty input), return original Y
+  return y;
+};
+
+
       const isValidPdf = async (arrayBuffer: ArrayBuffer): Promise<boolean> => {
         try {
-          // Check for PDF header
           const bytes = new Uint8Array(arrayBuffer);
-          const header = new TextDecoder().decode(bytes.slice(0, 8));
-          
-          // PDF files start with %PDF-1.x
+      const header = new TextDecoder().decode(bytes.slice(0, 5)); // Check first 5 bytes for %PDF-
           if (!header.startsWith('%PDF-')) {
-            console.error('Invalid PDF header:', header);
+        console.error('[isValidPdf] Invalid PDF header:', header);
             return false;
           }
-          
-          // Try to parse it as a PDF
-          try {
-            // @ts-ignore - TypeScript doesn't recognize the load method
-            await PDFDocument.load(bytes);
-            return true;
-          } catch (e) {
-            console.error('Failed to parse PDF:', e);
+      // Optional: Basic sanity check on file size?
+      if (bytes.length < 20) { // Arbitrary small size check
+          console.error('[isValidPdf] PDF file too small.');
             return false;
           }
+      // Avoid full parsing here for speed, rely on embedPdf's load
+      return true;
         } catch (error) {
-          console.error('PDF validation failed:', error);
+      console.error('[isValidPdf] PDF validation failed:', error);
           return false;
         }
       };
       
-      // Function to get a URL from a file object or URL string
       const getFileUrl = async (fileOrUrl: any): Promise<string | null> => {
-        // Add logging to see exactly what we receive
-        console.log('[getFileUrl] Input:', fileOrUrl); 
-        
+    console.log('[getFileUrl] Input:', fileOrUrl);
         if (!fileOrUrl) return null;
-        
-        // If it's a string, assume it's already a URL
-        if (typeof fileOrUrl === 'string') {
-          console.log('[getFileUrl] Type: string, URL:', fileOrUrl);
-          return fileOrUrl;
-        }
-        
-        // If it has a 'url' property (like from Firebase Storage)
-        if (fileOrUrl.url && typeof fileOrUrl.url === 'string') {
-          console.log('[getFileUrl] Type: object with url property, URL:', fileOrUrl.url);
-          return fileOrUrl.url;
-        }
-        
-        // If it has a 'path' property
-        if (fileOrUrl.path && typeof fileOrUrl.path === 'string') {
-          console.log('[getFileUrl] Type: object with path property, Path:', fileOrUrl.path);
-          return fileOrUrl.path;
-        }
-        
-        // If it's a File object (less likely for persisted data)
-        if (fileOrUrl instanceof File || 
-            (fileOrUrl.type && fileOrUrl.size && fileOrUrl.name)) {
-          const blobUrl = URL.createObjectURL(fileOrUrl);
-          console.log('[getFileUrl] Type: File object, Created Blob URL:', blobUrl);
-          return blobUrl;
-        }
-        
-        // Fallback attempt (less reliable)
-        if (typeof fileOrUrl.toString === 'function') {
-          const str = fileOrUrl.toString();
-          if (str !== '[object Object]') {
-             console.log('[getFileUrl] Type: object with toString, String:', str);
-             return str;
-          }
-        }
-        
-        console.error('[getFileUrl] Unable to get URL from:', fileOrUrl);
+    if (typeof fileOrUrl === 'string') return fileOrUrl;
+    if (fileOrUrl.url && typeof fileOrUrl.url === 'string') return fileOrUrl.url;
+    if (fileOrUrl.path && typeof fileOrUrl.path === 'string') return fileOrUrl.path;
+    if (fileOrUrl instanceof File || (fileOrUrl.type && fileOrUrl.size && fileOrUrl.name)) {
+        const blobUrl = URL.createObjectURL(fileOrUrl);
+        console.log('[getFileUrl] Created Blob URL:', blobUrl);
+        return blobUrl;
+    }
+    console.error('[getFileUrl] Unable to get URL from:', fileOrUrl);
         return null;
       };
       
-      // Function to fetch and embed a PDF
-      const embedPdf = async (fileOrUrl: any): Promise<{ success: boolean; error?: string }> => {
-        if (!fileOrUrl) return { success: false, error: 'No file or URL provided' };
-        
-        try {
-          // Get a usable URL
-          const url = await getFileUrl(fileOrUrl);
-          if (!url) {
-            return { success: false, error: 'Could not get URL from file object' };
-          }
-          
-          console.log('Fetching PDF from URL:', url);
-          const response = await fetch(url);
-          
-          if (!response.ok) {
-            return { 
-              success: false, 
-              error: `HTTP error: ${response.status} ${response.statusText}` 
-            };
-          }
-          
-          const contentType = response.headers.get('content-type');
-          console.log('Content-Type:', contentType);
-          
-          const arrayBuffer = await response.arrayBuffer();
-          console.log('File fetched, size:', arrayBuffer.byteLength);
-          
-          if (arrayBuffer.byteLength === 0) {
-            return { success: false, error: 'File is empty' };
-          }
-          
-          // Validate that it's actually a PDF
-          const valid = await isValidPdf(arrayBuffer);
-          if (!valid) {
-            return { success: false, error: 'File is not a valid PDF' };
-          }
-          
-          const pdfBytes = new Uint8Array(arrayBuffer);
-          
-          // Load the PDF document
-          console.log('Loading PDF document');
-          // @ts-ignore - TypeScript doesn't recognize the load method
-          const uploadedPdf = await PDFDocument.load(pdfBytes);
-          const pageCount = uploadedPdf.getPageCount();
-          console.log('PDF loaded, pages:', pageCount);
-          
-          if (pageCount === 0) {
-            return { success: false, error: 'PDF has no pages' };
-          }
-          
-          // Copy all pages from the uploaded PDF
-          const pageIndices = uploadedPdf.getPageIndices();
-          console.log('Copying pages:', pageIndices);
-          // @ts-ignore - TypeScript doesn't recognize the copyPages method
-          const copiedPages = await pdfDoc.copyPages(uploadedPdf, pageIndices);
-          
-          // Add all pages to our document
-          console.log('Adding pages to document');
-          copiedPages.forEach((page: any) => {
-            pdfDoc.addPage(page);
-          });
-          
-          // Clean up if we created an object URL
-          if (url.startsWith('blob:') && typeof fileOrUrl !== 'string') {
-            URL.revokeObjectURL(url);
-          }
-          
-          console.log('PDF embedded successfully');
-          return { success: true };
-        } catch (error) {
-          console.error('Error embedding PDF:', error);
-          return { 
-            success: false, 
-            error: `Error: ${error instanceof Error ? error.message : String(error)}` 
-          };
-        }
-      };
-      
-      // Function to add a section with its PDF(s)
-      const addSectionWithPdf = async (
+// --- Modified embedPdf to accept pdfDoc ---
+const embedPdf = async (pdfDoc: PDFDocument, fileOrUrl: any): Promise<{ success: boolean; error?: string }> => {
+  let url: string | null = null;
+  try {
+    url = await getFileUrl(fileOrUrl); if (!url) return { success: false, error:'...'};
+    const response = await fetch(url); if (!response.ok) return { success: false, error:'...'};
+    const arrayBuffer = await response.arrayBuffer(); if(!arrayBuffer || arrayBuffer.byteLength === 0) return { success: false, error:'...'};
+    if (!(await isValidPdf(arrayBuffer))) return { success: false, error:'...'};
+
+    const pdfBytes = new Uint8Array(arrayBuffer);
+    // @ts-ignore
+    const uploadedPdf = await PDFDocument.load(pdfBytes);
+
+    // @ts-ignore
+    const pageCount = uploadedPdf.getPageCount();
+    if (pageCount === 0) return { success: false, error: 'PDF-ul nu are pagini' };
+    // @ts-ignore
+    const pageIndices = uploadedPdf.getPageIndices();
+    console.log('[embedPdf] Copying pages:', pageIndices);
+    // @ts-ignore
+    const copiedPages = await pdfDoc.copyPages(uploadedPdf, pageIndices);
+
+    console.log('[embedPdf] Adding pages to main document');
+    copiedPages.forEach((page: PDFPage) => {
+      // @ts-ignore
+      const newPage = pdfDoc.addPage(page.getSize());
+      // @ts-ignore
+      newPage.drawPage(page);
+
+      // @ts-ignore
+      // pdfDoc.addPage(page);
+    });
+
+    if (url.startsWith('blob:')) URL.revokeObjectURL(url);
+    return { success: true };
+  } catch (error: any) {
+    if (url?.startsWith('blob:')) URL.revokeObjectURL(url);
+    return { success: false, error: `Eroare embed: ${error.message}` };
+  }
+};
+
+// --- Modified addSectionContent to accept margin ---
+const addSectionContent = (
+  pdfDoc: PDFDocument,
+  timesRomanFont: PDFFont,
+  timesBoldFont: PDFFont,
         title: string,
         content: Array<{ label: string; value: string }>,
-        uploadedFilesArray?: Array<{ url?: string; path?: string; name?: string } | string | File> 
-      ): Promise<void> => {
-        let sectionPage = pdfDoc.addPage([595.276, 841.890]);
-        let currentY = sectionPage.getHeight() - 50;
-        const margin = 50;
-        const contentWidth = sectionPage.getWidth() - (margin * 2);
+  margin: number,
+  existingPage?: PDFPage,
+  startCurrentY?: number
+): { page: PDFPage, currentY: number } => {
+   let page = existingPage || pdfDoc.addPage([595.28, 841.89]);
+   let currentY = startCurrentY || page.getHeight() - margin;
+   const contentWidth = page.getWidth() - (margin * 2);
+
+   if (title) {
+     page.drawText(title, { x: margin, y: currentY, size: 16, font: timesBoldFont, color: rgb(0, 0, 0) });
+     currentY -= 30;
+   }
         
-        // Section title
-        sectionPage.drawText(title, {
-          x: margin,
-          y: currentY,
-          size: 16,
-          font: timesBoldFont,
-          color: rgb(0, 0, 0),
-        });
-        currentY -= 30;
-        
-        // Content items
         for (const item of content) {
-          // Check if we need a new page
-          if (currentY < 100) {
-            sectionPage = pdfDoc.addPage([595.276, 841.890]);
-            currentY = sectionPage.getHeight() - 50;
-          }
-          
-          if (item.value !== undefined && item.value !== null && item.value !== '') {
-            // Label
-            sectionPage.drawText(item.label, {
-              x: margin,
-              y: currentY,
-              size: 12,
+     if (currentY < 60) {
+       page = pdfDoc.addPage([595.28, 841.89]);
+       currentY = page.getHeight() - margin;
+     }
+     if (item.value !== undefined && item.value !== null && item.value !== '' && item.value !== '-') {
+       page.drawText(item.label, { x: margin, y: currentY, size: 12, font: timesBoldFont, color: rgb(0, 0, 0) });
+       currentY = addWrappedText(page, item.value, margin + 150, currentY, contentWidth - 150, 12, timesRomanFont);
+     }
+   }
+   return { page, currentY };
+};
+
+interface TocEntry {
+  level: 1 | 2; // 1 for main sections, 2 for files/checklist items
+  name: string;
+  page: number; // 1-based page number
+}
+
+export default function PdfExportButton({ project }: PdfExportButtonProps) {
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const generatePDF = async () => {
+    if (!project) return;
+    setIsGenerating(true);
+    console.log('Starting PDF generation for project:', project.name);
+
+    const tocEntries: TocEntry[] = [];
+
+    try {
+      const pdfDoc = await PDFDocument.create();
+      const timesRomanFont = await pdfDoc.embedFont(StandardFonts.TimesRoman);
+      const timesBoldFont = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
+      const margin = 50;
+      const defaultPageSize: [number, number] = [595.28, 841.89]; // A4 in points
+
+      // --- 1. Title Page ---
+      console.log('Adding Title Page');
+      // @ts-ignore
+      const titlePage = pdfDoc.addPage(defaultPageSize);
+      const { width: pageWidth, height: pageHeight } = titlePage.getSize();
+      const titleText = 'Cartea Tehnica a Constructiei';
+      const titleFontSize = 24;
+      const titleWidth = timesBoldFont.widthOfTextAtSize(titleText, titleFontSize);
+      titlePage.drawText(titleText, {
+        x: (pageWidth - titleWidth) / 2,
+        y: pageHeight / 2, // Center vertically
               font: timesBoldFont,
+        size: titleFontSize,
               color: rgb(0, 0, 0),
             });
-            
-            // Value with text wrapping
-            currentY = addWrappedText(
-              sectionPage, 
-              item.value, 
-              margin + 150, 
-              currentY, 
-              contentWidth - 150, 
-              12, 
-              timesRomanFont
-            );
-            
-            // Space between items
-            currentY -= 10;
-          }
-        }
-        
-        // --- MODIFICATION START ---
-        // Check if the array exists and has items
-        if (uploadedFilesArray && uploadedFilesArray.length > 0) { 
-          currentY -= 20; // Space before the list of attached PDFs
+      const projectNameText = removeAllDiacritics(project.name || 'Proiect Fara Nume');
+      const projectNameFontSize = 16;
+      const projectNameWidth = timesRomanFont.widthOfTextAtSize(projectNameText, projectNameFontSize);
+      titlePage.drawText(projectNameText, {
+        x: (pageWidth - projectNameWidth) / 2,
+        y: pageHeight / 2 - 40, // Below main title
+        font: timesRomanFont,
+        size: projectNameFontSize,
+        color: rgb(0.2, 0.2, 0.2),
+      });
 
-          // Indicate that attached documents follow
-          sectionPage.drawText(`Documente PDF atasate (${uploadedFilesArray.length}) (urmeaza imediat):`, {
-             x: margin,
-             y: currentY,
-             size: 12,
-             font: timesBoldFont,
-             color: rgb(0, 0, 0),
-          });
-          currentY -= 5; // Small space before starting the embedding process
+      // --- GENERATE ALL CONTENT PAGES ---
+      let currentPageNum = 1; // Title page is page 1
+      const addPageAndIncrement = (): PDFPage => { currentPageNum++; return pdfDoc.addPage(defaultPageSize); };
 
-          let successfulEmbeds = 0;
-          let failedEmbeds: { fileInfo: string; error: string }[] = [];
-
-          // Loop through each file in the array
-          for (const fileToEmbed of uploadedFilesArray) {
-            if (fileToEmbed) { // Ensure the item is not null/undefined
-              console.log(`[addSectionWithPdf] Attempting to embed file:`, fileToEmbed);
-              const result = await embedPdf(fileToEmbed); 
-              
-              if (result.success) {
-                successfulEmbeds++;
-                console.log(`[addSectionWithPdf] Successfully embedded file.`);
-              } else {
-                // Collect information about failed embeds
-                console.error(`[addSectionWithPdf] Failed to embed file. Error: ${result.error}`);
-                let fileInfo = 'N/A';
-                 if(typeof fileToEmbed === 'string') {
-                    fileInfo = fileToEmbed;
-                } else if (fileToEmbed && typeof fileToEmbed === 'object' && 'name' in fileToEmbed) {
-                   // @ts-ignore - Try to get name if it exists
-                   fileInfo = `File object: ${fileToEmbed.name || 'unnamed'}`;
-                } else if (fileToEmbed && typeof fileToEmbed === 'object') {
-                   fileInfo = `Object: ${JSON.stringify(fileToEmbed)}`; 
-                }
-                failedEmbeds.push({ fileInfo, error: result.error || 'Motiv necunoscut' });
-              }
-            } else {
-              console.log("[addSectionWithPdf] Skipping null/undefined item in uploadedFilesArray.");
-            }
-          } // End of loop
-
-          // Add error summary to the section page if any embeds failed
-          if (failedEmbeds.length > 0) {
-             currentY -= 20; // Add space before error summary
-             sectionPage.drawText(`Eroare la incarcarea a ${failedEmbeds.length} document(e) PDF:`, {
-                 x: margin,
-                 y: currentY,
-                 size: 12,
-                 font: timesBoldFont,
-                 color: rgb(1, 0, 0), // Red color
-             });
-             
-             for(const failure of failedEmbeds) {
-                 currentY -= 15;
-                 if (currentY < 50) { // Add new page if needed for errors
-                    sectionPage = pdfDoc.addPage([595.276, 841.890]);
-                    currentY = sectionPage.getHeight() - 50;
-                 }
-                 sectionPage.drawText(`- ${removeAllDiacritics(failure.fileInfo)}: ${removeAllDiacritics(failure.error)}`, {
-                     x: margin + 10, // Indent errors
-                     y: currentY,
-                     size: 10,
-                     font: timesRomanFont,
-                     color: rgb(1, 0, 0), 
-                 });
-             }
-          }
-
-        } else {
-             // Optional: Add text if no files were found/provided
-             // currentY -= 20;
-             // sectionPage.drawText('Niciun document PDF atasat.', { /* ... options ... */ });
-        }
-        // --- MODIFICATION END ---
-      };
-      
-      // Add General Information section with its PDF
-      console.log('Adding General Information section');
-      await addSectionWithPdf('1. Informatii Generale', [
-        { label: 'Nume Proiect:', value: project.name || '-' },
-        { label: 'Descriere:', value: project.description || '-' },
-        { label: 'Nume Constructie:', value: project.constructionName || '-' },
-        { label: 'Adresa:', value: project.address || '-' },
-        { label: 'Beneficiar:', value: project.beneficiary || '-' },
+      // --- 2. Section: Date Generale ---
+      console.log('Adding General Project Data section');
+      const generalProjectContent = [
+        { label: 'Denumire conf AC:', value: project.constructionName || '-' },
+        { label: 'Localizare (Obiectiv):', value: project.address || '-' },
+        { label: 'Investitor (Nume):', value: project.beneficiary || '-' },
+        { label: 'Investitor (Adresa):', value: project.investorAddress || '-' },
+        { label: 'Investitor (Judet):', value: project.investorCounty || '-' },
+        { label: 'Autorizatie (Numar):', value: project.authNumber || '-' },
+        { label: 'Autorizatie (Data):', value: formatDate(project.authDate) },
+        { label: 'Autorizatie (Termen):', value: formatDate(project.authDeadline) },
+        { label: 'Notificare ISC (Numar):', value: project.iscNoticeNumber || '-' },
+        { label: 'Notificare ISC (Data):', value: formatDate(project.iscNoticeDate) },
+        { label: 'Data Receptie Lucrari:', value: formatDate(project.receptionDate) },
+        { label: 'Adresa Santier:', value: project.siteAddress || '-' },
         { label: 'Proiectant:', value: project.designer || '-' },
         { label: 'Constructor:', value: project.builder || '-' },
-      ], project.tabs?.general?.uploadedFiles);
-      
-      // Add Technical section with its PDF
-      console.log('Adding Technical section');
-      const technical = project.tabs?.technical;
-      if (technical) {
-        await addSectionWithPdf('2. Specificatii Tehnice', [
-          { label: 'Tehnologii:', value: (technical.technologies && technical.technologies.length > 0) ? technical.technologies.join(', ') : '-' },
-          { label: 'Complexitate:', value: technical.complexity || '-' },
-          { label: 'Descriere Produs:', value: technical.productDescription || '-' },
-          { label: 'Caracteristici Tehnice:', value: technical.technicalCharacteristics || '-' },
-          { label: 'Conditii de Productie:', value: technical.productionConditions || '-' },
-        ], technical.uploadedFiles);
+        { label: 'Descriere Generala:', value: project.description || '-' }, // Top-level description if exists
+      ].filter(item => item.value && item.value !== '-'); // Filter out empty/default
+      if (generalProjectContent.length > 0) { // Only add if content exists
+          const generalContentPage = addPageAndIncrement();
+          tocEntries.push({ level: 1, name: '1. Date Generale Proiect (Modal)', page: currentPageNum });
+          let generalContentY = generalContentPage.getHeight() - margin;
+          addSectionContent( pdfDoc, timesRomanFont, timesBoldFont, "", generalProjectContent, margin, generalContentPage, generalContentY );
+          // @ts-ignore
+          currentPageNum = pdfDoc.getPageCount(); // Update page count
       }
-      
-      // Add Financial section with its PDF
-      console.log('Adding Financial section');
-      const financial = project.tabs?.financial;
-      if (financial) {
-        await addSectionWithPdf('3. Informatii Financiare', [
-          { label: 'Buget:', value: `${financial.budget || 0} ${financial.currency || 'RON'}` },
-          { label: 'Cost Estimat:', value: `${financial.estimatedCost || 0} ${financial.currency || 'RON'}` },
-          { label: 'Marja de Profit:', value: `${financial.profitMargin || 0}%` },
-        ], financial.uploadedFiles);
+
+      // --- REUSABLE FUNCTION FOR CHECKLIST SECTIONS ---
+      const addChecklistSection = async (
+          sectionIndex: number,
+          sectionKey: 'general' | 'technical' | 'financial' | 'resources',
+          sectionFullName: string
+      ): Promise<boolean> => {
+          console.log(`Adding ${sectionFullName} section`);
+          const tabData = project.tabs[sectionKey];
+          let sectionAdded = false;
+
+          if (tabData?.checklistItems && tabData.checklistItems.some(item => item.checked)) {
+              const sectionTitle = `${sectionIndex}. ${sectionFullName}`;
+              const titlePage = addPageAndIncrement();
+              sectionAdded = true;
+              tocEntries.push({ level: 1, name: sectionTitle, page: currentPageNum });
+              titlePage.drawText(sectionTitle, { x: margin, y: titlePage.getHeight() - margin, size: 18, font: timesBoldFont, color: rgb(0,0,0) });
+
+              for (const item of tabData.checklistItems) {
+                  if (item.checked) {
+                      let itemContentPage = addPageAndIncrement();
+                      tocEntries.push({ level: 2, name: item.label, page: currentPageNum });
+                      let itemContentY = itemContentPage.getHeight() - margin;
+                      itemContentPage.drawText(item.label, { x: margin, y: itemContentY, size: 14, font: timesBoldFont, color: rgb(0, 0, 0) });
+                      itemContentY -= 30;
+
+                      if (item.file) {
+                          // @ts-ignore
+                          const pageNumBeforeEmbed = pdfDoc.getPageCount() + 1;
+                          const result = await embedPdf(pdfDoc, item.file);
+                          // @ts-ignore
+                          currentPageNum = pdfDoc.getPageCount();
+                          if (result.success) {
+                              tocEntries.push({ level: 2, name: `   - ${item.file.name}`, page: pageNumBeforeEmbed });
+                          } else {
+                              console.error(`Failed embed for ${item.label}: ${result.error}`);
+                              // Add error message BELOW sub-heading on the item's content page
+                              if (itemContentY < 60) { itemContentPage = addPageAndIncrement(); itemContentY = itemContentPage.getHeight() - margin; }
+                              itemContentPage.drawText(`! Eroare PDF: ${removeAllDiacritics(result.error || 'Necunoscut')}`, { x: margin, y: itemContentY, size: 10, font: timesRomanFont, color: rgb(1, 0, 0) });
+                              itemContentY -= 15;
+                          }
+                      } else {
+                          // No file attached - add note below sub-heading
+                          if (itemContentY < 60) { itemContentPage = addPageAndIncrement(); itemContentY = itemContentPage.getHeight() - margin; }
+                          itemContentPage.drawText(`(Niciun document PDF atasat)`, { x: margin, y: itemContentY, size: 10, font: timesRomanFont, color: rgb(0.5, 0.5, 0.5) });
+                          itemContentY -= 15;
+                      }
+                  } // end if checked
+              } // end loop
+          } // end if checklist items exist & checked
+          return sectionAdded;
+      };
+
+      // --- Call addChecklistSection for all tabs ---
+      let currentSectionIndex = 1; // Start after "Date Generale"
+
+      const proiectareAdded = await addChecklistSection(currentSectionIndex + 1, 'general', 'Documentatie Proiectare');
+      if (proiectareAdded) currentSectionIndex++;
+
+      const executieAdded = await addChecklistSection(currentSectionIndex + 1, 'technical', 'Documentatie Executie');
+      if (executieAdded) currentSectionIndex++;
+
+      const receptieAdded = await addChecklistSection(currentSectionIndex + 1, 'financial', 'Documentatie Receptie');
+      if (receptieAdded) currentSectionIndex++;
+
+      const urmarireAdded = await addChecklistSection(currentSectionIndex + 1, 'resources', 'Documentatie Urmarirea in Timp');
+      if (urmarireAdded) currentSectionIndex++;
+
+      // --- Generate and Insert Borderou General Page ---
+      console.log('Generating Borderou General page');
+      if (tocEntries.length > 0) {
+          // @ts-ignore
+          const borderouPage = pdfDoc.insertPage(1, defaultPageSize);
+          for (let i = 0; i < tocEntries.length; i++) { tocEntries[i].page++; }
+
+          let borderouY = borderouPage.getHeight() - margin;
+          const tableX = margin;
+          const tableWidth = borderouPage.getWidth() - margin * 2;
+          const nameColWidth = tableWidth * 0.85; // More space for name
+          const pageColWidth = tableWidth * 0.15;
+          const pageColX = tableX + nameColWidth;
+          const fontSize = 10;
+          const lineHeight = 15; // Base line height
+
+          // Borderou Title
+          borderouPage.drawText('Borderou General / Cuprins', { x: margin, y: borderouY, font: timesBoldFont, size: 14 });
+          borderouY -= 30;
+
+          // Table Headers
+          borderouPage.drawText('Nume', { x: tableX, y: borderouY, font: timesBoldFont, size: fontSize });
+          borderouPage.drawText('Pagina', { x: pageColX, y: borderouY, font: timesBoldFont, size: fontSize });
+          borderouY -= 5;
+          borderouPage.drawLine({ start: { x: tableX, y: borderouY }, end: { x: tableX + tableWidth, y: borderouY }, thickness: 0.5 });
+          borderouY -= lineHeight;
+
+          // Table Rows
+          for (const entry of tocEntries) {
+               // Check for page overflow BEFORE drawing
+               if (borderouY < margin + lineHeight) {
+                   console.warn("Borderou content overflow - requires pagination logic.");
+                   break; // Stop drawing if overflow occurs
+               }
+
+               const isMainSection = entry.level === 1;
+               const currentFont = isMainSection ? timesBoldFont : timesRomanFont;
+               const indent = isMainSection ? 0 : 10; // Indent sub-items (level 2)
+
+               // --- Draw Name (Left Aligned) ---
+               // Basic Truncation (replace with wrapping if essential)
+               let displayName = entry.name;
+               let textWidth = currentFont.widthOfTextAtSize(displayName, fontSize);
+               while (textWidth > nameColWidth - indent && displayName.length > 10) {
+                  displayName = displayName.substring(0, displayName.length - 4) + "..."; // Simple truncation
+                  textWidth = currentFont.widthOfTextAtSize(displayName, fontSize);
+               }
+               borderouPage.drawText(displayName, {
+                   x: tableX + indent,
+                   y: borderouY,
+                   font: currentFont,
+                   size: fontSize,
+                   color: rgb(0,0,0),
+                   maxWidth: nameColWidth - indent // Good practice, though we truncated
+               });
+
+               // --- Draw Page Number (Right Aligned) ---
+               const pageNumStr = String(entry.page);
+               const pageNumWidth = timesRomanFont.widthOfTextAtSize(pageNumStr, fontSize); // Use consistent font for width calc?
+               borderouPage.drawText(pageNumStr, {
+                   x: pageColX + pageColWidth - pageNumWidth, // Calculate right alignment start X
+                   y: borderouY,
+                   font: timesRomanFont, // Use standard font for numbers
+                   size: fontSize,
+                   color: rgb(0,0,0)
+               });
+
+               borderouY -= lineHeight; // Move Y for next line
+          }
       }
-      
-      // Add Resources section with its PDF
-      console.log('Adding Resources section');
-      const resources = project.tabs?.resources;
-      if (resources) {
-        await addSectionWithPdf('4. Resurse', [
-          { label: 'Membri Echipa:', value: (resources.teamMembers && resources.teamMembers.length > 0) ? resources.teamMembers.join(', ') : '-' },
-          { label: 'Abilitati Necesare:', value: (resources.requiredSkills && resources.requiredSkills.length > 0) ? resources.requiredSkills.join(', ') : '-' },
-          { label: 'Echipamente Necesare:', value: (resources.equipmentNeeded && resources.equipmentNeeded.length > 0) ? resources.equipmentNeeded.join(', ') : '-' },
-        ], resources.uploadedFiles);
-      }
-      
-      // Save the PDF
-      console.log('Saving PDF');
+
+
+      // --- Save and Display ---
+      console.log('Saving PDF document');
       const pdfBytes = await pdfDoc.save();
-      
-      // Create a blob from the PDF bytes
       const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-      const url = URL.createObjectURL(blob);
-      
-      // Open the PDF in a new tab for viewing only
-      window.open(url, '_blank');
-      
-      // Clean up the URL object after a delay
-      setTimeout(() => {
-        URL.revokeObjectURL(url);
-      }, 5000); // Longer delay to ensure the PDF loads in the new tab
-      
-      setIsGenerating(false);
+      const blobUrl = URL.createObjectURL(blob);
+      console.log('Opening PDF in new tab');
+      window.open(blobUrl, '_blank');
+
     } catch (error) {
-      console.error('Failed to generate PDF:', error);
-      alert('Eroare la generarea PDF-ului. Va rugam sa incercati din nou.');
+      console.error('Error generating PDF:', error);
+      const message = error instanceof Error ? error.message : String(error);
+      alert(`Eroare la generarea PDF-ului: ${message}`);
+    } finally {
       setIsGenerating(false);
     }
-  };
+  }; // End generatePDF
   
   return (
-    <Button
-      onClick={generatePDF}
-      className="flex items-center gap-2"
-      variant="default"
-      disabled={isGenerating}
-    >
-      {isGenerating ? (
-        <>
-          <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
-          <span>Generare...</span>
-        </>
-      ) : (
-        <>
-          <Eye className="h-4 w-4" />
-          <span>Descarcare PDF</span>
-        </>
-      )}
+    <Button onClick={generatePDF} disabled={isGenerating} variant="outline">
+      {isGenerating ? 'Se generează...' : <><Download className="mr-2 h-4 w-4" />Descarcă PDF</>}
     </Button>
   );
 } 

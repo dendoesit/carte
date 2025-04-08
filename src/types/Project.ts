@@ -4,41 +4,30 @@ export type Currency = "RON" | "EUR" | "USD";
 export interface UploadedFile {
   name: string;
   url: string;
-  type: string;
+  type?: string;
+}
+
+export interface ChecklistItem {
+  id: string;
+  label: string;
+  checked: boolean;
+  file: UploadedFile | null;
 }
 
 export interface GeneralTab {
-  startDate: string;
-  endDate: string;
-  projectType: string;
-  clientName: string;
-  uploadedFiles?: UploadedFile[];
+  checklistItems: ChecklistItem[];
 }
 
 export interface TechnicalTab {
-  technologies: string[];
-  complexity: Complexity;
-  specifications: string;
-  productDescription: string;
-  technicalCharacteristics: string;
-  productionConditions: string;
-  technicalRequirements: string;
-  uploadedFiles?: UploadedFile[];
+  checklistItems: ChecklistItem[];
 }
 
 export interface FinancialTab {
-  budget: number;
-  estimatedCost: number;
-  currency: Currency;
-  profitMargin: number;
-  uploadedFiles?: UploadedFile[];
+  checklistItems: ChecklistItem[];
 }
 
 export interface ResourcesTab {
-  teamMembers: string[];
-  requiredSkills: string[];
-  equipmentNeeded: string[];
-  uploadedFiles?: UploadedFile[];
+  checklistItems: ChecklistItem[];
 }
 
 export interface ProjectTabs {

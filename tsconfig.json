@@ -20,7 +20,7 @@
       "allowSyntheticDefaultImports": true,
       "baseUrl": ".",
       "paths": {
-        "@/*": ["src/*"]
+        "@/*": ["./src/*"]
       },
       "types": [
         "node",
@@ -30,7 +30,8 @@
       ]
     },
     "include": [
-      "src"
+      "src/**/*",
+      "src/types/pdf-lib-override.d.ts"
     ],
     "references": [{ "path": "./tsconfig.node.json" }]
 }
