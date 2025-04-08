@@ -15,6 +15,7 @@ import {
   Upload,
   ArrowLeft,
   FileText,
+  X as XIcon,
 } from 'lucide-react'
 import { Project, GeneralTab } from '@/types/Project'
 import * as pdfjsLib from 'pdfjs-dist'
@@ -32,7 +33,6 @@ const Dashboard: React.FC = () => {
   const [projectDescription, setProjectDescription] = useState('')
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
   const [isSaving, setIsSaving] = useState(false)
-  const [pdfContents, setPdfContents] = useState<Record<string, string>>({});
   const [constructionName, setConstructionName] = useState('');
   const [address, setAddress] = useState('');
   const [beneficiary, setBeneficiary] = useState('');
@@ -111,7 +111,7 @@ const Dashboard: React.FC = () => {
           clientName: '',
           startDate: startDate,
           endDate: endDate,
-          uploadedFile: undefined
+          uploadedFiles: [],
         },
         technical: {
           technologies: [],
@@ -119,7 +119,7 @@ const Dashboard: React.FC = () => {
           productDescription: '',
           technicalCharacteristics: '',
           productionConditions: '',
-          uploadedFile: undefined,
+          uploadedFiles: [],
           specifications: '',
           technicalRequirements: ''
         },
@@ -128,23 +128,34 @@ const Dashboard: React.FC = () => {
           estimatedCost: 0,
           currency: 'RON',
           profitMargin: 0,
-          uploadedFile: undefined
+          uploadedFiles: [],
         },
         resources: {
           teamMembers: [],
           requiredSkills: [],
           equipmentNeeded: [],
-          uploadedFile: undefined
+          uploadedFiles: [],
         }
       }
     };
 
+    if (editingProject) {
+      projectData.tabs = {
+        general: { ...editingProject.tabs.general, uploadedFiles: editingProject.tabs.general.uploadedFiles || [] },
+        technical: { ...editingProject.tabs.technical, uploadedFiles: editingProject.tabs.technical.uploadedFiles || [] },
+        financial: { ...editingProject.tabs.financial, uploadedFiles: editingProject.tabs.financial.uploadedFiles || [] },
+        resources: { ...editingProject.tabs.resources, uploadedFiles: editingProject.tabs.resources.uploadedFiles || [] }
+      };
+      projectData.tabs.general.startDate = startDate;
+      projectData.tabs.general.endDate = endDate;
+    } else {
+      projectData.tabs.general.startDate = startDate;
+      projectData.tabs.general.endDate = endDate;
+    }
+
     try {
       if (editingProject) {
-        await updateProject(editingProject.id, {
-          ...projectData,
-          id: editingProject.id
-        });
+        await updateProject(editingProject.id, projectData);
       } else {
         await createProject(projectData);
       }
@@ -191,56 +202,26 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  // Function to extract text from PDF
-  const extractPdfText = async (file: File, tab: keyof Project['tabs']) => {
-    try {
-      setPdfContents(prev => ({
-        ...prev,
-        [tab]: 'Extracting text from PDF...'
-      }));
-
-      const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      let fullText = '';
-
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const textContent = await page.getTextContent();
-        const pageText = textContent.items
-          .map((item: any) => item.str)
-          .join(' ');
-        fullText += `Page ${i}:\n${pageText}\n\n`;
-      }
-
-      if (!fullText.trim()) {
-        throw new Error('No text content found in the PDF');
-      }
-
-      setPdfContents(prev => ({
-        ...prev,
-        [tab]: fullText
-      }));
-    } catch (error) {
-      console.error('Error extracting PDF text:', error);
-      setPdfContents(prev => ({
-        ...prev,
-        [tab]: `Error extracting PDF content: ${error instanceof Error ? error.message : 'Unknown error'}`
-      }));
-    }
-  };
-
-  // Update handleFileUpload to handle errors better
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, tab: keyof Project['tabs']) => {
     const file = event.target.files?.[0];
     if (!file || !selectedProject) return;
 
+    const currentFiles = selectedProject.tabs[tab].uploadedFiles || [];
+    if (currentFiles.some(f => f.name === file.name)) {
+       alert(`Un fișier cu numele "${file.name}" există deja în această secțiune.`);
+       event.target.value = '';
+       return;
+    }
+
     if (file.type !== 'application/pdf') {
       alert('Please upload a PDF file');
+      event.target.value = '';
       return;
     }
 
-    if (file.size > 10 * 1024 * 1024) { // 10MB limit
+    if (file.size > 10 * 1024 * 1024) {
       alert('File size should be less than 10MB');
+      event.target.value = '';
       return;
     }
 
@@ -248,280 +229,191 @@ const Dashboard: React.FC = () => {
 
     try {
       const fileUrl = URL.createObjectURL(file);
-      
-      // Extract text from PDF
-      await extractPdfText(file, tab);
-      
-      // Update the project with the file information
-      await updateProject(selectedProject.id, {
+      const newFileEntry = {
+        name: file.name,
+        url: fileUrl,
+        type: file.type
+      };
+
+      const updatedFiles = [...currentFiles, newFileEntry];
+
+      const updatedProjectData = {
         tabs: {
           ...selectedProject.tabs,
           [tab]: {
             ...selectedProject.tabs[tab],
-            uploadedFile: {
-              name: file.name,
-              url: fileUrl,
-              type: file.type
-            }
+            uploadedFiles: updatedFiles
           }
         }
-      });
+      };
 
-      // Update the selected project state
+      await updateProject(selectedProject.id, updatedProjectData);
+
       setSelectedProject({
         ...selectedProject,
-        tabs: {
-          ...selectedProject.tabs,
-          [tab]: {
-            ...selectedProject.tabs[tab],
-            uploadedFile: {
-              name: file.name,
-              url: fileUrl,
-              type: file.type
-            }
-          }
-        }
+        ...updatedProjectData
       });
+
+      event.target.value = '';
+
     } catch (error) {
       console.error('Error uploading file:', error);
       alert('Error uploading file. Please try again.');
-      // Clear the file input
       event.target.value = '';
     } finally {
       setIsSaving(false);
     }
   };
 
-  // Update handleRemoveFile to clear PDF content
-  const handleRemoveFile = async (tab: keyof Project['tabs']) => {
-    if (!selectedProject) return;
+  const handleRemoveFile = async (tab: keyof Project['tabs'], fileIndex: number) => {
+     if (!selectedProject) return;
 
-    try {
-      await updateProject(selectedProject.id, {
-        tabs: {
-          ...selectedProject.tabs,
-          [tab]: {
-            ...selectedProject.tabs[tab],
-            uploadedFile: undefined
-          }
-        }
-      });
+     const currentFiles = selectedProject.tabs[tab].uploadedFiles || [];
+     const fileToRemove = currentFiles[fileIndex];
+     if (!fileToRemove) return;
 
-      setSelectedProject({
-        ...selectedProject,
-        tabs: {
-          ...selectedProject.tabs,
-          [tab]: {
-            ...selectedProject.tabs[tab],
-            uploadedFile: undefined
-          }
-        }
-      });
+     if (fileToRemove.url.startsWith('blob:')) {
+        URL.revokeObjectURL(fileToRemove.url);
+     }
 
-      // Clear the PDF content
-      setPdfContents(prev => {
-        const newContents = { ...prev };
-        delete newContents[tab];
-        return newContents;
-      });
-    } catch (error) {
-      console.error('Error removing file:', error);
-      alert('Error removing file');
-    }
+     const updatedFiles = currentFiles.filter((_, index) => index !== fileIndex);
+
+     try {
+       const updatedProjectData = {
+         tabs: {
+           ...selectedProject.tabs,
+           [tab]: {
+             ...selectedProject.tabs[tab],
+             uploadedFiles: updatedFiles
+           }
+         }
+       };
+
+       await updateProject(selectedProject.id, updatedProjectData);
+
+       setSelectedProject({
+         ...selectedProject,
+         ...updatedProjectData
+       });
+
+     } catch (error) {
+       console.error('Error removing file:', error);
+       alert('Error removing file');
+     }
   };
 
-  const renderFileUpload = (tab: keyof Project['tabs']) => (
-    <div className="mt-6 border-t pt-6">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-medium text-gray-700">Additional Documents</h3>
-        <div className="relative">
-          <input
-            type="file"
-            accept=".pdf"
-            onChange={(e) => handleFileUpload(e, tab)}
-            className="hidden"
-            id={`file-upload-${tab}`}
-            disabled={isSaving}
-          />
-          <label
-            htmlFor={`file-upload-${tab}`}
-            className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg cursor-pointer transition-colors"
-          >
-            <Upload className="w-4 h-4" />
-            {isSaving ? 'Uploading...' : 'Upload PDF'}
-          </label>
-        </div>
-      </div>
-      {selectedProject?.tabs[tab].uploadedFile && (
-        <div className="bg-gray-50 p-4 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Upload className="w-5 h-5 text-primary-600" />
-              <span className="text-sm text-gray-600">
-                {selectedProject.tabs[tab].uploadedFile?.name}
-              </span>
-            </div>
-            <div className="flex items-center gap-3">
-              <a
-                href={selectedProject.tabs[tab].uploadedFile?.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-primary-600 hover:text-primary-700"
-              >
-                View PDF
-              </a>
-              <button
-                onClick={() => handleRemoveFile(tab)}
-                className="text-sm text-red-600 hover:text-red-700 flex items-center gap-1"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                </svg>
-                Remove
-              </button>
-            </div>
+  const renderFileUpload = (tab: keyof Project['tabs']) => {
+    const files = selectedProject?.tabs[tab]?.uploadedFiles || [];
+
+    return (
+      <div className="mt-6 border-t pt-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-medium text-gray-700">Documente Aditionale PDF</h3>
+          <div className="relative">
+            <input
+              type="file"
+              accept=".pdf"
+              onChange={(e) => handleFileUpload(e, tab)}
+              className="hidden"
+              id={`file-upload-${tab}`}
+              disabled={isSaving}
+            />
+            <label
+              htmlFor={`file-upload-${tab}`}
+              className={`flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg cursor-pointer transition-colors ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              <Upload className="w-4 h-4" />
+              {isSaving ? 'Se încarcă...' : 'Adaugă PDF'}
+            </label>
           </div>
         </div>
-      )}
-    </div>
-  );
+
+        {files.length > 0 && (
+          <div className="space-y-3 mt-4">
+            {files.map((file, index) => (
+              <div key={index} className="bg-gray-50 p-3 rounded-lg flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2 overflow-hidden">
+                   <FileText className="w-5 h-5 text-primary-600 flex-shrink-0" />
+                   <span className="text-gray-700 truncate" title={file.name}>
+                     {file.name}
+                   </span>
+                </div>
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  <a
+                    href={file.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary-600 hover:text-primary-700 font-medium"
+                    title="View PDF"
+                  >
+                    Vizualizează
+                  </a>
+                  <button
+                    onClick={() => handleRemoveFile(tab, index)}
+                    className="text-red-600 hover:text-red-800 flex items-center gap-1"
+                    title="Remove File"
+                  >
+                    <XIcon className="h-4 w-4" />
+                    <span>Șterge</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const renderPdfContent = () => (
     <div ref={componentRef} className="pdf-content hidden">
-      {/* Title Page */}
       <div className="min-h-screen flex flex-col items-center justify-center text-center p-8">
         <h1 className="text-4xl font-bold mb-4">Cartea Tehnica</h1>
         <h2 className="text-2xl font-semibold mb-8">{selectedProject?.name}</h2>
         <p className="text-lg text-gray-600">Generated on {new Date().toLocaleDateString()}</p>
       </div>
 
-      {/* General Info */}
       <div className="page-break">
         <h2 className="text-2xl font-bold mb-6">General Information</h2>
         <div className="space-y-4">
-          <div>
-            <h3 className="font-semibold">Project Type</h3>
-            <p>{selectedProject?.tabs.general.projectType || 'Not specified'}</p>
-          </div>
-          <div>
-            <h3 className="font-semibold">Client Name</h3>
-            <p>{selectedProject?.tabs.general.clientName || 'Not specified'}</p>
-          </div>
-          <div>
-            <h3 className="font-semibold">Project Timeline</h3>
-            <p>Start Date: {new Date(selectedProject?.tabs.general.startDate || '').toLocaleDateString()}</p>
-            <p>End Date: {new Date(selectedProject?.tabs.general.endDate || '').toLocaleDateString()}</p>
-          </div>
+          <div><h3 className="font-semibold">Project Name</h3><p>{selectedProject?.name}</p></div>
+          <div><h3 className="font-semibold">Description</h3><p>{selectedProject?.description || 'N/A'}</p></div>
+          <div><h3 className="font-semibold">Construction Name</h3><p>{selectedProject?.constructionName || 'N/A'}</p></div>
+          <div><h3 className="font-semibold">Address</h3><p>{selectedProject?.address || 'N/A'}</p></div>
+          <div><h3 className="font-semibold">Beneficiary</h3><p>{selectedProject?.beneficiary || 'N/A'}</p></div>
+          <div><h3 className="font-semibold">Designer</h3><p>{selectedProject?.designer || 'N/A'}</p></div>
+          <div><h3 className="font-semibold">Builder</h3><p>{selectedProject?.builder || 'N/A'}</p></div>
+          <div><h3 className="font-semibold">Start Date</h3><p>{formatDate(selectedProject?.tabs.general.startDate)}</p></div>
+          <div><h3 className="font-semibold">End Date</h3><p>{formatDate(selectedProject?.tabs.general.endDate)}</p></div>
         </div>
-        {selectedProject?.tabs.general.uploadedFile && (
-          <div className="mt-8">
-            <h3 className="font-semibold mb-4">Additional Documents</h3>
-            <div className="bg-gray-50 p-6 rounded-lg">
-              <h4 className="font-medium mb-2">{selectedProject.tabs.general.uploadedFile.name}</h4>
-              <div className="whitespace-pre-wrap text-sm text-gray-700">
-                {pdfContents['general'] || 'Loading PDF content...'}
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* Technical Specs */}
       <div className="page-break">
         <h2 className="text-2xl font-bold mb-6">Technical Specifications</h2>
         <div className="space-y-4">
-          <div>
-            <h3 className="font-semibold">Technologies</h3>
-            <p>{selectedProject?.tabs.technical.technologies.join(', ') || 'Not specified'}</p>
-          </div>
-          <div>
-            <h3 className="font-semibold">Complexity</h3>
-            <p>{selectedProject?.tabs.technical.complexity}</p>
-          </div>
-          <div>
-            <h3 className="font-semibold">Product Description</h3>
-            <p className="whitespace-pre-wrap">{selectedProject?.tabs.technical.productDescription || 'Not specified'}</p>
-          </div>
-          <div>
-            <h3 className="font-semibold">Technical Characteristics</h3>
-            <p className="whitespace-pre-wrap">{selectedProject?.tabs.technical.technicalCharacteristics || 'Not specified'}</p>
-          </div>
-          <div>
-            <h3 className="font-semibold">Production Conditions</h3>
-            <p className="whitespace-pre-wrap">{selectedProject?.tabs.technical.productionConditions || 'Not specified'}</p>
-          </div>
+          <div><h3 className="font-semibold">Product Description</h3><p>{selectedProject?.tabs.technical.productDescription || 'N/A'}</p></div>
+          <div><h3 className="font-semibold">Technical Characteristics</h3><p>{selectedProject?.tabs.technical.technicalCharacteristics || 'N/A'}</p></div>
+          <div><h3 className="font-semibold">Production Conditions</h3><p>{selectedProject?.tabs.technical.productionConditions || 'N/A'}</p></div>
+          <div><h3 className="font-semibold">Norme și Standarde</h3><p>{formatArray(selectedProject?.tabs.technical.technologies)}</p></div>
         </div>
-        {selectedProject?.tabs.technical.uploadedFile && (
-          <div className="mt-8">
-            <h3 className="font-semibold mb-4">Additional Documents</h3>
-            <div className="bg-gray-50 p-6 rounded-lg">
-              <h4 className="font-medium mb-2">{selectedProject.tabs.technical.uploadedFile.name}</h4>
-              <div className="whitespace-pre-wrap text-sm text-gray-700">
-                {pdfContents['technical'] || 'Loading PDF content...'}
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* Financial */}
       <div className="page-break">
         <h2 className="text-2xl font-bold mb-6">Financial Information</h2>
         <div className="space-y-4">
-          <div>
-            <h3 className="font-semibold">Budget</h3>
-            <p>{selectedProject?.tabs.financial.budget.toLocaleString()} {selectedProject?.tabs.financial.currency}</p>
-          </div>
-          <div>
-            <h3 className="font-semibold">Estimated Cost</h3>
-            <p>{selectedProject?.tabs.financial.estimatedCost.toLocaleString()} {selectedProject?.tabs.financial.currency}</p>
-          </div>
-          <div>
-            <h3 className="font-semibold">Profit Margin</h3>
-            <p>{selectedProject?.tabs.financial.profitMargin}%</p>
-          </div>
+          <div><h3 className="font-semibold">Cost de Producție</h3><p>{selectedProject?.tabs.financial.budget || 0} {selectedProject?.tabs.financial.currency}</p></div>
+          <div><h3 className="font-semibold">Preț de Vânzare</h3><p>{selectedProject?.tabs.financial.estimatedCost || 0} {selectedProject?.tabs.financial.currency}</p></div>
+          <div><h3 className="font-semibold">Marja de Profit</h3><p>{selectedProject?.tabs.financial.profitMargin || 0}%</p></div>
         </div>
-        {selectedProject?.tabs.financial.uploadedFile && (
-          <div className="mt-8">
-            <h3 className="font-semibold mb-4">Additional Documents</h3>
-            <div className="bg-gray-50 p-6 rounded-lg">
-              <h4 className="font-medium mb-2">{selectedProject.tabs.financial.uploadedFile.name}</h4>
-              <div className="whitespace-pre-wrap text-sm text-gray-700">
-                {pdfContents['financial'] || 'Loading PDF content...'}
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* Resources */}
       <div className="page-break">
         <h2 className="text-2xl font-bold mb-6">Resources</h2>
         <div className="space-y-4">
-          <div>
-            <h3 className="font-semibold">Team Members</h3>
-            <p>{selectedProject?.tabs.resources.teamMembers.join(', ') || 'Not specified'}</p>
-          </div>
-          <div>
-            <h3 className="font-semibold">Required Skills</h3>
-            <p>{selectedProject?.tabs.resources.requiredSkills.join(', ') || 'Not specified'}</p>
-          </div>
-          <div>
-            <h3 className="font-semibold">Equipment Needed</h3>
-            <p>{selectedProject?.tabs.resources.equipmentNeeded.join(', ') || 'Not specified'}</p>
-          </div>
+          <div><h3 className="font-semibold">Personal Necesar</h3><p>{formatArray(selectedProject?.tabs.resources.teamMembers)}</p></div>
+          <div><h3 className="font-semibold">Calificări Necesare</h3><p>{formatArray(selectedProject?.tabs.resources.requiredSkills)}</p></div>
+          <div><h3 className="font-semibold">Echipamente Necesare</h3><p>{formatArray(selectedProject?.tabs.resources.equipmentNeeded)}</p></div>
         </div>
-        {selectedProject?.tabs.resources.uploadedFile && (
-          <div className="mt-8">
-            <h3 className="font-semibold mb-4">Additional Documents</h3>
-            <div className="bg-gray-50 p-6 rounded-lg">
-              <h4 className="font-medium mb-2">{selectedProject.tabs.resources.uploadedFile.name}</h4>
-              <div className="whitespace-pre-wrap text-sm text-gray-700">
-                {pdfContents['resources'] || 'Loading PDF content...'}
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
@@ -651,21 +543,17 @@ const Dashboard: React.FC = () => {
     });
   };
 
-  // Fix date display
   const formatDate = (date: string | undefined) => {
     if (!date) return '';
     return new Date(date).toISOString().split('T')[0];
   };
 
-  // Fix array handling
   const formatArray = (arr: string[] | undefined) => {
     return arr?.join(', ') || 'Not specified';
   };
 
-  // Add this new function to copy a project
   const handleCopyProject = async (project: Project) => {
     try {
-      // Create a new project with the same data but with "COPY" appended to the name
       const copiedProject: Omit<Project, 'id' | 'createdAt'> = {
         name: `${project.name} COPY`,
         description: project.description,
@@ -684,7 +572,6 @@ const Dashboard: React.FC = () => {
       };
       
       await createProject(copiedProject);
-      // Show success message
       alert('Project copied successfully!');
     } catch (error) {
       console.error('Error copying project:', error);
@@ -694,7 +581,6 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-gray-100">
-      {/* Sidebar */}
       <div className="w-64 bg-white border-r shadow-lg">
         <div className="p-6 border-b">
           <div className="flex items-center space-x-4">
@@ -759,7 +645,6 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="flex-1 overflow-auto">
         <div className="p-6">
           {selectedProject ? (
@@ -789,10 +674,10 @@ const Dashboard: React.FC = () => {
 
               <Tabs defaultValue="general" className="w-full">
                 <TabsList className="grid w-full grid-cols-4">
-                  <TabsTrigger value="general">Informații Generale</TabsTrigger>
-                  <TabsTrigger value="technical">Specificații Tehnice</TabsTrigger>
-                  <TabsTrigger value="financial">Informații Financiare</TabsTrigger>
-                  <TabsTrigger value="resources">Resurse</TabsTrigger>
+                  <TabsTrigger value="general">Proiectare</TabsTrigger>
+                  <TabsTrigger value="technical">Executie</TabsTrigger>
+                  <TabsTrigger value="financial">Receptie</TabsTrigger>
+                  <TabsTrigger value="resources">Urmarirea in timp</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="general" className="mt-6">
@@ -1119,7 +1004,6 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Project Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
           <div className="bg-white rounded-lg shadow-xl w-96 p-6">

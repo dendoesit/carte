@@ -422,7 +422,7 @@ export default function PdfExportButton({ project }: PdfExportButtonProps) {
         { label: 'Beneficiar:', value: project.beneficiary || '-' },
         { label: 'Proiectant:', value: project.designer || '-' },
         { label: 'Constructor:', value: project.builder || '-' },
-      ], project.tabs?.general?.uploadedFile);
+      ], project.tabs?.general?.uploadedFiles);
       
       // Add Technical section with its PDF
       console.log('Adding Technical section');
@@ -434,7 +434,7 @@ export default function PdfExportButton({ project }: PdfExportButtonProps) {
           { label: 'Descriere Produs:', value: technical.productDescription || '-' },
           { label: 'Caracteristici Tehnice:', value: technical.technicalCharacteristics || '-' },
           { label: 'Conditii de Productie:', value: technical.productionConditions || '-' },
-        ], technical.uploadedFile);
+        ], technical.uploadedFiles);
       }
       
       // Add Financial section with its PDF
@@ -445,7 +445,7 @@ export default function PdfExportButton({ project }: PdfExportButtonProps) {
           { label: 'Buget:', value: `${financial.budget || 0} ${financial.currency || 'RON'}` },
           { label: 'Cost Estimat:', value: `${financial.estimatedCost || 0} ${financial.currency || 'RON'}` },
           { label: 'Marja de Profit:', value: `${financial.profitMargin || 0}%` },
-        ], financial.uploadedFile);
+        ], financial.uploadedFiles);
       }
       
       // Add Resources section with its PDF
@@ -456,7 +456,7 @@ export default function PdfExportButton({ project }: PdfExportButtonProps) {
           { label: 'Membri Echipa:', value: (resources.teamMembers && resources.teamMembers.length > 0) ? resources.teamMembers.join(', ') : '-' },
           { label: 'Abilitati Necesare:', value: (resources.requiredSkills && resources.requiredSkills.length > 0) ? resources.requiredSkills.join(', ') : '-' },
           { label: 'Echipamente Necesare:', value: (resources.equipmentNeeded && resources.equipmentNeeded.length > 0) ? resources.equipmentNeeded.join(', ') : '-' },
-        ], resources.uploadedFile);
+        ], resources.uploadedFiles);
       }
       
       // Save the PDF

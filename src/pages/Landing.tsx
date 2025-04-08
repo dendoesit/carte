@@ -80,18 +80,33 @@ export default function Landing() {
                   <div className="mt-12 relative sm:max-w-lg sm:mx-auto lg:mt-0 lg:max-w-none lg:mx-0 lg:col-span-6 lg:flex lg:items-center">
                     <div className="relative mx-auto w-full rounded-lg shadow-lg lg:max-w-md">
                       <div className="relative block w-full bg-white rounded-lg overflow-hidden">
-                        <img
-                          className="w-full object-cover object-center"
-                          src="/technical-documentation.jpg"
-                          alt="Documentație tehnică și scheme"
-                          width={1920}
-                          height={1080}
-                          loading="eager"
-                          style={{
-                            aspectRatio: "16/9",
-                            objectFit: "cover",
-                          }}
-                        />
+                        {/* Background Image - Using <picture> */}
+                        <picture className="absolute inset-0 w-full h-full -z-10">
+                           {/* Offer different formats/sizes */}
+                           <source 
+                              srcSet="/images/background-cartetehnica-1200.webp 1200w, 
+                                      /images/background-cartetehnica-1920.webp 1920w" 
+                              type="image/webp"
+                              // Add sizes attribute if needed (helps browser choose faster)
+                              sizes="(max-width: 1200px) 100vw, 1920px" 
+                           />
+                           {/* Fallback for browsers that don't support webp (less common now) */}
+                           <source 
+                              srcSet="/images/background-cartetehnica-1200.jpg 1200w, 
+                                      /images/background-cartetehnica-1920.jpg 1920w" 
+                              type="image/jpeg"
+                              sizes="(max-width: 1200px) 100vw, 1920px"
+                           />
+                           {/* Base img tag is the ultimate fallback */}
+                           <img
+                             src="/images/background-cartetehnica-1200.jpg" // Smallest JPG as fallback src
+                             alt="Fundal Carte Tehnica Digitala"
+                             loading="lazy"
+                             width="1920" // Base dimensions for layout
+                             height="1080" // Base dimensions for layout
+                             className="w-full h-full object-cover"
+                           />
+                        </picture>
                       </div>
                     </div>
                   </div>

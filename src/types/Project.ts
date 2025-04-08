@@ -1,9 +1,10 @@
 export type Complexity = "Low" | "Medium" | "High";
 export type Currency = "RON" | "EUR" | "USD";
 
-interface UploadedFile {
+export interface UploadedFile {
   name: string;
   url: string;
+  type: string;
 }
 
 export interface GeneralTab {
@@ -11,7 +12,7 @@ export interface GeneralTab {
   endDate: string;
   projectType: string;
   clientName: string;
-  uploadedFile?: UploadedFile;
+  uploadedFiles?: UploadedFile[];
 }
 
 export interface TechnicalTab {
@@ -22,7 +23,7 @@ export interface TechnicalTab {
   technicalCharacteristics: string;
   productionConditions: string;
   technicalRequirements: string;
-  uploadedFile?: UploadedFile;
+  uploadedFiles?: UploadedFile[];
 }
 
 export interface FinancialTab {
@@ -30,14 +31,14 @@ export interface FinancialTab {
   estimatedCost: number;
   currency: Currency;
   profitMargin: number;
-  uploadedFile?: UploadedFile;
+  uploadedFiles?: UploadedFile[];
 }
 
 export interface ResourcesTab {
   teamMembers: string[];
   requiredSkills: string[];
   equipmentNeeded: string[];
-  uploadedFile?: UploadedFile;
+  uploadedFiles?: UploadedFile[];
 }
 
 export interface ProjectTabs {
